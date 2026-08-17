@@ -4,15 +4,18 @@ This file is read on every run and given to Claude as scoring context.
 Edit it freely — no code changes needed when your criteria change.
 
 ## Target roles
-- Marketing Communications Manager / Lead
-- Growth Marketing Manager
-- Marketing Project Manager
-- Digital Marketing Manager (growth-leaning, not purely creative/brand)
+- Growth Marketing Specialist / Executive
+- Marketing Communications Coordinator / Executive / Project Manager
+- Digital Marketing Executive (growth-leaning, not purely creative/brand)
+- Marketing Operations (AI-assisted content/SEO workflows)
 
 ## Level
-5 years of experience across growth marketing, EdTech SaaS marketing, and
-multi-brand marketing communications leadership. Looking for Manager/Lead
-level roles — not entry-level or junior individual-contributor titles.
+~3 years of professional experience across growth marketing (DeltaX, AdTech/SaaS)
+and EdTech SaaS growth (Kraftshala), plus a current marketing communications
+internship at L2R Partners Group (Paris) alongside an MBA at EMLV Business
+School. Targeting mid-level / senior-executive roles — coordinator, specialist,
+or junior-manager titles are a good fit. Not entry-level/junior individual-
+contributor titles, but the role doesn't need "Manager" or "Lead" in the title.
 
 ## Location
 Paris, France. Open to hybrid. Not open to relocation outside France.
