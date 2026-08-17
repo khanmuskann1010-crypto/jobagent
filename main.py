@@ -6,6 +6,13 @@ write a styled HTML digest -> save the run for voice_agent.py to reference.
 Usage:
     python main.py
     python main.py --keywords "growth marketing" --max-results 30 --min-score 6
+
+--extra-listings lets another process (e.g. the daily Routine, which pulls
+Indeed via Claude's connector since there's no public Indeed API a script
+can call directly) feed in pre-fetched listings as a JSON file, so they go
+through the same dedupe/score/digest pipeline as France Travail + Adzuna.
+Each entry must match the normalize_listing schema: id, source, title,
+company, location, description, contract_type, url, date_posted.
 """
 
 import argparse
@@ -50,6 +57,11 @@ def main():
         default=str(DEFAULT_DIGEST_PATH),
         help=f"Where to write the HTML digest (default: {DEFAULT_DIGEST_PATH.name})",
     )
+    parser.add_argument(
+        "--extra-listings",
+        default=None,
+        help="Path to a JSON file of pre-fetched listings (e.g. Indeed) to merge in",
+    )
     args = parser.parse_args()
 
     print(f"Searching France Travail + Adzuna for '{args.keywords}'...")
@@ -68,7 +80,12 @@ def main():
     except Exception as e:
         print(f"  Adzuna fetch failed, skipping this source: {e}")
 
-    print(f"Fetched {len(listings)} listings across both sources.")
+    if args.extra_listings:
+        extra = json.loads(Path(args.extra_listings).read_text())
+        listings += extra
+        print(f"  Merged {len(extra)} pre-fetched listings from {args.extra_listings}")
+
+    print(f"Fetched {len(listings)} listings across all sources.")
 
     new_listings = filter_unseen(listings)
     print(f"{len(new_listings)} are new (not seen in a previous run).\n")

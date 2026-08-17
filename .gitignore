@@ -3,7 +3,11 @@ __pycache__/
 *.pyc
 .venv/
 venv/
-jobs.db
 jobs_digest.html
 last_run.json
 cv_suggestions/
+indeed_raw.json
+
+# jobs.db IS committed (not ignored): the daily cloud Routine runs in a
+# fresh session each time with no persistent local disk, so dedup history
+# has to live in git itself. Local/cron users get the same file for free.
