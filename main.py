@@ -1,20 +1,27 @@
 """
-Phase 1: fetch -> score -> print, sorted highest fit first.
+Phase 2: fetch from France Travail + Adzuna -> drop listings already seen
+in a previous run -> score new ones with Claude -> print ranked results ->
+write a styled HTML digest -> save the run for voice_agent.py to reference.
 
 Usage:
     python main.py
-    python main.py --keywords "growth marketing" --max-results 30
-
-No database, no scheduling yet - that's Phase 2. This just proves the
-core loop works end to end.
+    python main.py --keywords "growth marketing" --max-results 30 --min-score 6
 """
 
 import argparse
+import json
+from pathlib import Path
 
 from dotenv import load_dotenv
 
-from fetch_jobs import normalize_listing, search_jobs
+import adzuna
+import fetch_jobs
+from db import filter_unseen, save_scored
+from digest import generate_html
 from score_jobs import score_all
+
+DEFAULT_DIGEST_PATH = Path(__file__).parent / "jobs_digest.html"
+LAST_RUN_PATH = Path(__file__).parent / "last_run.json"
 
 
 def main():
@@ -30,7 +37,7 @@ def main():
         "--max-results",
         type=int,
         default=25,
-        help="Max listings to fetch and score (default: 25)",
+        help="Max listings to fetch per source (default: 25)",
     )
     parser.add_argument(
         "--min-score",
@@ -38,31 +45,65 @@ def main():
         default=0,
         help="Only show listings scoring at or above this (default: 0, show all)",
     )
+    parser.add_argument(
+        "--digest-path",
+        default=str(DEFAULT_DIGEST_PATH),
+        help=f"Where to write the HTML digest (default: {DEFAULT_DIGEST_PATH.name})",
+    )
     args = parser.parse_args()
 
-    print(f"Searching France Travail for '{args.keywords}'...")
-    raw_results = search_jobs(args.keywords, max_results=args.max_results)
-    listings = [normalize_listing(r) for r in raw_results]
-    print(f"Found {len(listings)} listings. Scoring against your profile...\n")
+    print(f"Searching France Travail + Adzuna for '{args.keywords}'...")
 
-    if not listings:
-        print("No listings found - try different keywords.")
+    listings = []
+
+    try:
+        ft_raw = fetch_jobs.search_jobs(args.keywords, max_results=args.max_results)
+        listings += [fetch_jobs.normalize_listing(r) for r in ft_raw]
+    except Exception as e:
+        print(f"  France Travail fetch failed, skipping this source: {e}")
+
+    try:
+        adzuna_raw = adzuna.search_jobs(args.keywords, max_results=args.max_results)
+        listings += [adzuna.normalize_listing(r) for r in adzuna_raw]
+    except Exception as e:
+        print(f"  Adzuna fetch failed, skipping this source: {e}")
+
+    print(f"Fetched {len(listings)} listings across both sources.")
+
+    new_listings = filter_unseen(listings)
+    print(f"{len(new_listings)} are new (not seen in a previous run).\n")
+
+    digest_path = Path(args.digest_path)
+
+    if not new_listings:
+        print("Nothing new today.")
+        generate_html([], digest_path)
+        LAST_RUN_PATH.write_text(json.dumps([], ensure_ascii=False, indent=2))
+        print(f"Digest written to {digest_path}")
         return
 
-    scored = score_all(listings)
+    print("Scoring against your profile...\n")
+    scored = score_all(new_listings)
+    save_scored(scored)
+
     shown = [s for s in scored if s["score"] >= args.min_score]
 
     print(f"{'='*70}")
     print(f"RESULTS ({len(shown)} of {len(scored)} shown, ranked by fit)")
     print(f"{'='*70}\n")
 
-    for job in shown:
-        print(f"[{job['score']}/10] {job['title']} @ {job['company']}")
+    for i, job in enumerate(shown, start=1):
+        print(f"[{i}] {job['score']}/10 — {job['title']} @ {job['company']} ({job['source']})")
         print(f"         {job['location']} | {job['contract_type']}")
         print(f"         {job['reason']}")
         if job["url"]:
             print(f"         {job['url']}")
         print()
+
+    generate_html(shown, digest_path)
+    LAST_RUN_PATH.write_text(json.dumps(shown, ensure_ascii=False, indent=2))
+    print(f"Digest written to {digest_path}")
+    print(f"Run saved to {LAST_RUN_PATH} — use voice_agent.py to talk about these listings and tailor your CV.")
 
 
 if __name__ == "__main__":

@@ -72,7 +72,8 @@ def search_jobs(keywords: str, commune: str = "75056", max_results: int = 25) ->
 def normalize_listing(raw: dict) -> dict:
     """Pull out just the fields we need from France Travail's verbose schema."""
     return {
-        "id": raw.get("id"),
+        "id": str(raw.get("id", "")),
+        "source": "france_travail",
         "title": raw.get("intitule", ""),
         "company": raw.get("entreprise", {}).get("nom", "Unknown"),
         "location": raw.get("lieuTravail", {}).get("libelle", ""),

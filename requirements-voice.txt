@@ -1,0 +1,8 @@
+# Optional: only needed for voice_agent.py's spoken (non --text) mode.
+# PyAudio needs the portaudio system library first:
+#   macOS:  brew install portaudio
+#   Linux:  sudo apt-get install portaudio19-dev espeak
+#   Windows: usually installs without extra steps
+SpeechRecognition>=3.10.0
+pyttsx3>=2.90
+pyaudio>=0.2.13

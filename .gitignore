@@ -3,3 +3,7 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+jobs.db
+jobs_digest.html
+last_run.json
+cv_suggestions/
