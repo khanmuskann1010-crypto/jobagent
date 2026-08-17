@@ -328,7 +328,7 @@
         <input id="chat-input" type="text" placeholder="e.g. what's new / tell me about job 2 / tailor my cv for job 1" autocomplete="off">
         <button class="send-btn" id="send-btn">Send</button>
       </div>
-      <div class="chat-hint">Voice uses your browser's built-in speech recognition (Chrome/Edge). No mic? Just type.</div>
+      <div class="chat-hint">Voice uses your browser's built-in speech recognition (Safari or Chrome). No mic? Just type.</div>
     </div>
   </section>
 
@@ -550,7 +550,7 @@ let listening = false;
 
 if (!SpeechRecognitionImpl) {
   micBtn.disabled = true;
-  micBtn.title = "Voice input isn't supported in this browser - try Chrome or Edge, or just type.";
+  micBtn.title = "Voice input isn't supported in this browser - try Safari or Chrome, or just type.";
 } else {
   recognizer = new SpeechRecognitionImpl();
   recognizer.lang = "en-US";
