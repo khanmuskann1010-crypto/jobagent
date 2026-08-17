@@ -1,11 +1,11 @@
-# Job Search Agent — Phase 2 + CV tailoring + voice
+# Job Search Agent — Phase 2 + CV tailoring + voice + dashboard
 
-Fetches marketing/growth job listings from the France Travail and Adzuna
-APIs, skips anything you've already seen in a previous run, scores each
-new listing against your profile using Claude, and produces both a
-terminal ranking and a styled HTML digest — highest fit first. On top of
-that: Claude-powered CV tailoring per listing, and a voice interface you
-can talk to about your results.
+Fetches marketing/growth job listings from France Travail, Adzuna, and
+Indeed, skips anything you've already seen, scores each new listing
+against your profile using Claude, and tracks it through to applied.
+On top of the core pipeline: Claude-powered CV tailoring per listing, a
+CLI voice interface, and a web dashboard with a chat/voice panel, an
+application tracker, and a progress view.
 
 See `build-plan.md` for the original phased plan.
 
@@ -121,6 +121,52 @@ python voice_agent.py --text
 ```
 Same commands, typed instead of spoken, printed instead of read aloud.
 
+## Dashboard
+
+A local web app (FastAPI backend + a single-page frontend) with the job
+queue, a chat/voice panel, an applied-jobs tracker, and a progress view —
+built around three columns:
+
+- **Left** — the job queue (all scored listings, highest fit first) over
+  a progress funnel (new → applied → interviewing → rejected)
+- **Center** — chat, typed or spoken (your browser's built-in speech
+  recognition/synthesis — Chrome or Edge — no extra install or paid API).
+  Same commands as `voice_agent.py`: "what's new", "tell me about job 2",
+  "tailor my cv for job 2". Clicking a job in the queue asks about it directly.
+- **Right** — your best current match (highest-scoring listing you haven't
+  acted on) with a "Mark applied" button, over the applied-jobs tracker
+
+```bash
+pip install -r requirements-api.txt -r requirements.txt
+uvicorn api:app --reload
+```
+Then open http://localhost:8000. It reads and writes `jobs.db` directly —
+whatever `main.py` (or the daily Routine) has already scored shows up
+here, and marking something applied here is what the progress funnel and
+Phase 3 tracking are built on.
+
+### API reference
+
+All endpoints are under `/api` and return JSON. `{source}`/`{external_id}`
+identify a listing (e.g. `indeed`/`JOBSEARCH_145`).
+
+| Method | Path | Does |
+|---|---|---|
+| GET | `/api/jobs?min_score=&status=` | List scored jobs, highest score first |
+| GET | `/api/jobs/{source}/{external_id}` | One job's full record |
+| PATCH | `/api/jobs/{source}/{external_id}/status` | Body `{"status": "applied"}` — one of `new`/`applied`/`interviewing`/`rejected`/`skipped` |
+| GET | `/api/applied` | Jobs with status applied/interviewing/rejected |
+| GET | `/api/best-match` | Highest-scoring job still at status `new` |
+| GET | `/api/progress` | `{total_scored, by_status: {...}}` counts for the funnel |
+| POST | `/api/jobs/{source}/{external_id}/tailor-cv` | Runs `cv_tailor.py` against this listing, returns the suggestions |
+| POST | `/api/chat` | Body `{"message": "..."}` — same command parsing as `voice_agent.py`, returns `{reply, intent, job_number}` |
+
+Example:
+```bash
+curl -X PATCH localhost:8000/api/jobs/indeed/JOBSEARCH_145/status \
+  -H "Content-Type: application/json" -d '{"status":"applied"}'
+```
+
 ## Running on a schedule
 
 Use the included wrapper so cron picks up the right working directory:
@@ -136,9 +182,8 @@ Add a line to run every morning at 8am:
 
 ## What's next (Phase 3)
 
-- Application tracker: mark listings as applied/interviewing/rejected
-- Indeed as a third source
 - Company career-page watcher for specific target employers
+- Chat-driven status updates ("mark job 2 as applied") instead of button-only
 
 ## Project structure
 
@@ -148,14 +193,18 @@ job-search-agent/
 ├── cv.md                # your CV content — edit this freely
 ├── requirements.txt
 ├── requirements-voice.txt
+├── requirements-api.txt
 ├── .env.example
 ├── run_daily.sh         # cron wrapper
 ├── fetch_jobs.py        # France Travail API client
 ├── adzuna.py            # Adzuna API client
-├── db.py                # SQLite dedup store (jobs.db, gitignored)
+├── indeed_source.py      # parses Claude's Indeed connector output into the common listing schema
+├── db.py                # SQLite store: dedup history + application status (jobs.db, tracked in git)
 ├── digest.py            # styled HTML digest generator
 ├── score_jobs.py        # Claude scoring logic
 ├── cv_tailor.py          # Claude CV-tailoring logic
 ├── voice_agent.py        # CLI voice interface
+├── api.py                # dashboard backend (FastAPI)
+├── frontend/index.html   # dashboard frontend
 └── main.py              # orchestrator — run this
 ```

@@ -1,0 +1,585 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Job Search Console</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --bg: #faf9f6;
+    --surface: #ffffff;
+    --surface-2: #f3f1ea;
+    --text: #1f2a26;
+    --muted: #5b6b64;
+    --border: #e4e1d8;
+    --emerald: #0f6b4c;
+    --emerald-dark: #0a4a34;
+    --emerald-wash: #e7f5ee;
+    --gold: #c9a227;
+    --gold-wash: #faf3dd;
+    --danger: #b5533f;
+    --danger-wash: #f7e9e5;
+    --focus: #1c7a56;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #10160f;
+      --surface: #182019;
+      --surface-2: #1c241d;
+      --text: #eef2ef;
+      --muted: #8fa199;
+      --border: #2b352c;
+      --emerald: #2bbd8c;
+      --emerald-dark: #1a8f68;
+      --emerald-wash: #12291f;
+      --gold: #e0c15a;
+      --gold-wash: #2a2416;
+      --danger: #e08872;
+      --danger-wash: #2c1c17;
+      --focus: #2bbd8c;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #10160f;
+    --surface: #182019;
+    --surface-2: #1c241d;
+    --text: #eef2ef;
+    --muted: #8fa199;
+    --border: #2b352c;
+    --emerald: #2bbd8c;
+    --emerald-dark: #1a8f68;
+    --emerald-wash: #12291f;
+    --gold: #e0c15a;
+    --gold-wash: #2a2416;
+    --danger: #e08872;
+    --danger-wash: #2c1c17;
+    --focus: #2bbd8c;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+  }
+  .mono {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  .eyebrow {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  a { color: var(--emerald-dark); }
+  :root[data-theme="dark"] a, @media (prefers-color-scheme: dark) { }
+  button { font-family: inherit; }
+  button:focus-visible, input:focus-visible, textarea:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.9rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex: 0 0 auto;
+  }
+  header h1 {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+  }
+  header h1 .accent { color: var(--emerald-dark); }
+  .header-right { display: flex; align-items: center; gap: 0.9rem; }
+  .status-pulse { display: flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; color: var(--muted); }
+  .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--emerald);
+    box-shadow: 0 0 0 3px var(--emerald-wash);
+  }
+  .date { font-size: 0.78rem; color: var(--muted); }
+
+  main {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: 320px minmax(0, 1fr) 340px;
+    gap: 1px;
+    background: var(--border);
+  }
+  .col {
+    background: var(--bg);
+    display: grid;
+    min-height: 0;
+  }
+  .col-left { grid-template-rows: minmax(0, 1fr) auto; }
+  .col-right { grid-template-rows: auto minmax(0, 1fr); }
+
+  .panel {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding: 1rem 1.1rem;
+  }
+  .panel-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 0.7rem;
+    flex: 0 0 auto;
+  }
+  .panel-head .count { font-size: 0.75rem; color: var(--muted); }
+  .panel-body { overflow-y: auto; min-height: 0; flex: 1 1 auto; }
+  .panel + .panel { border-top: 1px solid var(--border); }
+
+  /* Job queue */
+  .job-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--border);
+    border-radius: 6px;
+    padding: 0.7rem 0.8rem;
+    margin-bottom: 0.55rem;
+    cursor: pointer;
+    transition: border-color 0.15s ease;
+  }
+  .job-card:hover { border-color: var(--emerald); }
+  .job-card.selected { border-color: var(--emerald); background: var(--emerald-wash); }
+  .job-card.tier-strong { border-left-color: var(--emerald); }
+  .job-card.tier-look { border-left-color: var(--gold); }
+  .job-card.tier-low { border-left-color: var(--border); }
+  .job-card-top { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; margin-bottom: 0.3rem; }
+  .score-chip {
+    font-family: ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.1rem 0.45rem;
+    border-radius: 4px;
+    color: var(--emerald-dark);
+    background: var(--emerald-wash);
+    white-space: nowrap;
+  }
+  .tier-look .score-chip { color: #8a6d1a; background: var(--gold-wash); }
+  :root[data-theme="dark"] .tier-look .score-chip,
+  @media (prefers-color-scheme: dark) { }
+  .job-card .source-tag { font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .job-card h3 { margin: 0 0 0.2rem; font-size: 0.88rem; line-height: 1.3; }
+  .job-card .meta { margin: 0; font-size: 0.76rem; color: var(--muted); }
+  .status-badge {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.08rem 0.4rem;
+    border-radius: 4px;
+    margin-left: 0.4rem;
+  }
+  .status-applied { background: var(--emerald-wash); color: var(--emerald-dark); }
+  .status-interviewing { background: var(--gold-wash); color: #8a6d1a; }
+  .status-rejected { background: var(--danger-wash); color: var(--danger); }
+
+  .empty-state { color: var(--muted); font-size: 0.85rem; padding: 1rem 0; text-align: center; }
+
+  /* Progress panel */
+  .progress-panel { flex: 0 0 auto; max-height: 34vh; }
+  .funnel { display: flex; flex-direction: column; gap: 0.45rem; }
+  .funnel-row { display: flex; align-items: center; gap: 0.6rem; }
+  .funnel-label { font-size: 0.74rem; color: var(--muted); width: 84px; flex: 0 0 auto; }
+  .funnel-track { flex: 1 1 auto; height: 7px; border-radius: 4px; background: var(--surface-2); overflow: hidden; }
+  .funnel-fill { height: 100%; border-radius: 4px; background: var(--emerald); }
+  .funnel-fill.gold { background: var(--gold); }
+  .funnel-fill.danger { background: var(--danger); }
+  .funnel-count { font-size: 0.78rem; width: 24px; text-align: right; flex: 0 0 auto; }
+
+  /* Chat column */
+  .col-center { display: flex; flex-direction: column; min-height: 0; }
+  .chat-panel { background: var(--surface-2); padding: 1rem 1.2rem; flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
+  .chat-log { flex: 1 1 auto; overflow-y: auto; display: flex; flex-direction: column; gap: 0.6rem; padding-bottom: 0.5rem; }
+  .msg { max-width: 78%; padding: 0.55rem 0.8rem; border-radius: 10px; font-size: 0.88rem; line-height: 1.4; }
+  .msg-agent { align-self: flex-start; background: var(--surface); border: 1px solid var(--border); border-bottom-left-radius: 2px; }
+  .msg-user { align-self: flex-end; background: var(--emerald); color: #fff; border-bottom-right-radius: 2px; }
+  .msg-meta { font-size: 0.68rem; color: var(--muted); margin-top: 0.3rem; }
+
+  .chat-input-row { display: flex; gap: 0.5rem; margin-top: 0.8rem; flex: 0 0 auto; }
+  .chat-input-row input {
+    flex: 1 1 auto;
+    padding: 0.65rem 0.85rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 0.9rem;
+  }
+  .icon-btn, .send-btn {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    border-radius: 8px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex: 0 0 auto;
+  }
+  .send-btn { width: auto; padding: 0 1rem; background: var(--emerald); color: #fff; border-color: var(--emerald); font-weight: 600; font-size: 0.85rem; }
+  .icon-btn.listening { background: var(--danger); border-color: var(--danger); color: #fff; }
+  .icon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .chat-hint { font-size: 0.72rem; color: var(--muted); margin-top: 0.5rem; }
+
+  /* Best match card */
+  .best-match-card {
+    background: linear-gradient(180deg, var(--emerald-wash), var(--surface) 70%);
+    border: 1px solid var(--emerald);
+    border-radius: 8px;
+    padding: 0.9rem 1rem;
+  }
+  .best-match-card .eyebrow { color: var(--emerald-dark); }
+  .best-match-score { font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums; font-size: 1.8rem; font-weight: 700; color: var(--emerald-dark); line-height: 1; }
+  .best-match-card h3 { margin: 0.3rem 0 0.15rem; font-size: 0.95rem; }
+  .best-match-card .meta { margin: 0 0 0.5rem; font-size: 0.78rem; color: var(--muted); }
+  .best-match-card .reason { font-size: 0.82rem; margin: 0 0 0.7rem; }
+  .best-match-actions { display: flex; gap: 0.5rem; }
+  .pill-btn {
+    font-size: 0.76rem;
+    font-weight: 600;
+    padding: 0.4rem 0.7rem;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+  }
+  .pill-btn.primary { background: var(--emerald); border-color: var(--emerald); color: #fff; }
+
+  /* Applied panel */
+  .applied-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.82rem;
+    gap: 0.5rem;
+  }
+  .applied-row:last-child { border-bottom: none; }
+  .applied-row .title { font-weight: 600; }
+  .applied-row .company { color: var(--muted); font-size: 0.76rem; }
+
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Job Search <span class="accent">Console</span></h1>
+  <div class="header-right">
+    <span class="date mono" id="today-date"></span>
+    <span class="status-pulse"><span class="dot"></span>live</span>
+  </div>
+</header>
+
+<main>
+  <section class="col col-left">
+    <div class="panel">
+      <div class="panel-head">
+        <span class="eyebrow">Queue</span>
+        <span class="count mono" id="queue-count">— jobs</span>
+      </div>
+      <div class="panel-body" id="job-list">
+        <div class="empty-state">Loading…</div>
+      </div>
+    </div>
+    <div class="panel progress-panel">
+      <div class="panel-head">
+        <span class="eyebrow">Progress</span>
+        <span class="count mono" id="progress-total">—</span>
+      </div>
+      <div class="funnel" id="funnel"></div>
+    </div>
+  </section>
+
+  <section class="col-center">
+    <div class="chat-panel">
+      <div class="panel-head">
+        <span class="eyebrow">Chat</span>
+        <span class="count" id="chat-hint-count">talk or type</span>
+      </div>
+      <div class="chat-log" id="chat-log"></div>
+      <div class="chat-input-row">
+        <button class="icon-btn" id="mic-btn" title="Speak">🎙️</button>
+        <input id="chat-input" type="text" placeholder="e.g. what's new / tell me about job 2 / tailor my cv for job 1" autocomplete="off">
+        <button class="send-btn" id="send-btn">Send</button>
+      </div>
+      <div class="chat-hint">Voice uses your browser's built-in speech recognition (Chrome/Edge). No mic? Just type.</div>
+    </div>
+  </section>
+
+  <section class="col col-right">
+    <div class="panel">
+      <div class="panel-head">
+        <span class="eyebrow">Best match</span>
+      </div>
+      <div id="best-match-slot"><div class="empty-state">Loading…</div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head">
+        <span class="eyebrow">Applied</span>
+        <span class="count mono" id="applied-count">—</span>
+      </div>
+      <div class="panel-body" id="applied-list">
+        <div class="empty-state">Nothing applied to yet.</div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+const API = "";
+let jobs = [];
+let selectedJob = null;
+
+const $ = (sel) => document.querySelector(sel);
+
+document.getElementById("today-date").textContent = new Date().toLocaleDateString(undefined, {
+  weekday: "long", year: "numeric", month: "long", day: "numeric"
+});
+
+function tierClass(score) {
+  if (score >= 8) return "tier-strong";
+  if (score >= 5) return "tier-look";
+  return "tier-low";
+}
+function tierLabel(score) {
+  if (score >= 8) return "Strong fit";
+  if (score >= 5) return "Worth a look";
+  return "Low fit";
+}
+
+async function api(path, opts) {
+  const res = await fetch(API + path, opts);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || res.statusText);
+  }
+  return res.status === 204 ? null : res.json();
+}
+
+function jobKey(j) { return `${j.source}:${j.id}`; }
+
+function renderJobList() {
+  const list = document.getElementById("job-list");
+  document.getElementById("queue-count").textContent = `${jobs.length} jobs`;
+  if (!jobs.length) {
+    list.innerHTML = '<div class="empty-state">No listings yet. Run main.py to fetch and score some.</div>';
+    return;
+  }
+  list.innerHTML = "";
+  jobs.forEach((j, i) => {
+    const card = document.createElement("div");
+    card.className = `job-card ${tierClass(j.score)}` + (selectedJob === jobKey(j) ? " selected" : "");
+    const statusBadge = j.status !== "new"
+      ? `<span class="status-badge status-${j.status}">${j.status}</span>` : "";
+    card.innerHTML = `
+      <div class="job-card-top">
+        <span class="score-chip mono">#${i + 1} · ${j.score}/10</span>
+        <span class="source-tag">${j.source.replace("_", " ")}</span>
+      </div>
+      <h3>${escapeHtml(j.title)}${statusBadge}</h3>
+      <p class="meta">${escapeHtml(j.company)} — ${escapeHtml(j.location)}</p>
+    `;
+    card.addEventListener("click", () => {
+      selectedJob = jobKey(j);
+      renderJobList();
+      askAboutJob(i + 1);
+    });
+    list.appendChild(card);
+  });
+}
+
+function escapeHtml(s) {
+  return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function renderBestMatch(job) {
+  const slot = document.getElementById("best-match-slot");
+  if (!job) {
+    slot.innerHTML = '<div class="empty-state">Nothing outstanding right now.</div>';
+    return;
+  }
+  slot.innerHTML = `
+    <div class="best-match-card">
+      <span class="eyebrow">Top pick</span>
+      <div class="best-match-score mono">${job.score}<span style="font-size:1rem;color:var(--muted)">/10</span></div>
+      <h3>${escapeHtml(job.title)}</h3>
+      <p class="meta">${escapeHtml(job.company)} — ${escapeHtml(job.location)}</p>
+      <p class="reason">${escapeHtml(job.reason)}</p>
+      <div class="best-match-actions">
+        <button class="pill-btn primary" data-action="applied">Mark applied</button>
+        <a class="pill-btn" href="${job.url || '#'}" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center;">Open listing</a>
+      </div>
+    </div>
+  `;
+  slot.querySelector('[data-action="applied"]').addEventListener("click", () => setStatus(job, "applied"));
+}
+
+function renderApplied(list) {
+  const el = document.getElementById("applied-list");
+  document.getElementById("applied-count").textContent = list.length;
+  if (!list.length) {
+    el.innerHTML = '<div class="empty-state">Nothing applied to yet.</div>';
+    return;
+  }
+  el.innerHTML = list.map(j => `
+    <div class="applied-row">
+      <div>
+        <div class="title">${escapeHtml(j.title)}</div>
+        <div class="company">${escapeHtml(j.company)}</div>
+      </div>
+      <span class="status-badge status-${j.status}">${j.status}</span>
+    </div>
+  `).join("");
+}
+
+function renderProgress(stats) {
+  document.getElementById("progress-total").textContent = `${stats.total_scored} scored`;
+  const rows = [
+    { label: "New", key: "new", cls: "" },
+    { label: "Applied", key: "applied", cls: "" },
+    { label: "Interview", key: "interviewing", cls: "gold" },
+    { label: "Rejected", key: "rejected", cls: "danger" },
+  ];
+  const max = Math.max(1, stats.total_scored);
+  document.getElementById("funnel").innerHTML = rows.map(r => {
+    const count = stats.by_status[r.key] || 0;
+    const pct = Math.round((count / max) * 100);
+    return `
+      <div class="funnel-row">
+        <span class="funnel-label">${r.label}</span>
+        <span class="funnel-track"><span class="funnel-fill ${r.cls}" style="width:${pct}%"></span></span>
+        <span class="funnel-count mono">${count}</span>
+      </div>
+    `;
+  }).join("");
+}
+
+async function setStatus(job, status) {
+  await api(`/api/jobs/${job.source}/${job.id}/status`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status }),
+  });
+  await refreshAll();
+}
+
+async function refreshAll() {
+  const [jobsRes, bestRes, appliedRes, progressRes] = await Promise.all([
+    api("/api/jobs"),
+    api("/api/best-match"),
+    api("/api/applied"),
+    api("/api/progress"),
+  ]);
+  jobs = jobsRes;
+  renderJobList();
+  renderBestMatch(bestRes);
+  renderApplied(appliedRes);
+  renderProgress(progressRes);
+}
+
+/* Chat */
+function appendMessage(role, text) {
+  const log = document.getElementById("chat-log");
+  const el = document.createElement("div");
+  el.className = `msg msg-${role}`;
+  el.textContent = text;
+  log.appendChild(el);
+  log.scrollTop = log.scrollHeight;
+  return el;
+}
+
+async function sendChat(text) {
+  if (!text.trim()) return;
+  appendMessage("user", text);
+  document.getElementById("chat-input").value = "";
+  const thinking = appendMessage("agent", "…");
+  try {
+    const res = await api("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: text }),
+    });
+    thinking.textContent = res.reply;
+    speak(res.reply);
+    if (res.intent === "tailor" || res.intent === "digest") await refreshAll();
+  } catch (e) {
+    thinking.textContent = `Something went wrong: ${e.message}`;
+  }
+}
+
+function askAboutJob(n) {
+  sendChat(`tell me about job ${n}`);
+}
+
+document.getElementById("send-btn").addEventListener("click", () => sendChat($("#chat-input").value));
+document.getElementById("chat-input").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") sendChat(e.target.value);
+});
+
+/* Voice: browser-native Web Speech API, no server/API key involved */
+const SpeechRecognitionImpl = window.SpeechRecognition || window.webkitSpeechRecognition;
+const micBtn = document.getElementById("mic-btn");
+let recognizer = null;
+let listening = false;
+
+if (!SpeechRecognitionImpl) {
+  micBtn.disabled = true;
+  micBtn.title = "Voice input isn't supported in this browser - try Chrome or Edge, or just type.";
+} else {
+  recognizer = new SpeechRecognitionImpl();
+  recognizer.lang = "en-US";
+  recognizer.interimResults = false;
+  recognizer.onresult = (e) => {
+    const text = e.results[0][0].transcript;
+    sendChat(text);
+  };
+  recognizer.onend = () => { listening = false; micBtn.classList.remove("listening"); };
+  recognizer.onerror = () => { listening = false; micBtn.classList.remove("listening"); };
+
+  micBtn.addEventListener("click", () => {
+    if (listening) { recognizer.stop(); return; }
+    listening = true;
+    micBtn.classList.add("listening");
+    recognizer.start();
+  });
+}
+
+function speak(text) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(text);
+  window.speechSynthesis.speak(utter);
+}
+
+/* Boot */
+appendMessage("agent", "Hi — ask me things like “what's new”, “tell me about job 2”, or “tailor my CV for job 1”. Click a job on the left to ask about it directly.");
+refreshAll().catch((e) => appendMessage("agent", `Couldn't load your data: ${e.message}`));
+</script>
+</body>
+</html>

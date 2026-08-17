@@ -1,0 +1,3 @@
+# Optional: only needed to run the dashboard (api.py).
+fastapi>=0.110.0
+uvicorn>=0.29.0
