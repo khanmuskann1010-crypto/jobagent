@@ -11,7 +11,7 @@ from pathlib import Path
 
 import anthropic
 
-PROFILE_PATH = Path(__file__).parent.parent / "profile.md"
+PROFILE_PATH = Path(__file__).parent / "profile.md"
 
 SYSTEM_PROMPT = """You are screening job listings for one specific candidate.
 You will be given the candidate's profile and criteria, then a single job
@@ -46,7 +46,7 @@ Contract type: {listing['contract_type']}
 Description: {listing['description'][:2000]}"""
 
     response = client.messages.create(
-        model="claude-sonnet-4-6",
+        model="claude-haiku-4-5-20251001",
         max_tokens=200,
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": user_content}],

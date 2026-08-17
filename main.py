@@ -2,8 +2,8 @@
 Phase 1: fetch -> score -> print, sorted highest fit first.
 
 Usage:
-    python -m src.main
-    python -m src.main --keywords "growth marketing" --max-results 30
+    python main.py
+    python main.py --keywords "growth marketing" --max-results 30
 
 No database, no scheduling yet - that's Phase 2. This just proves the
 core loop works end to end.
@@ -13,8 +13,8 @@ import argparse
 
 from dotenv import load_dotenv
 
-from src.fetch_jobs import normalize_listing, search_jobs
-from src.score_jobs import score_all
+from fetch_jobs import normalize_listing, search_jobs
+from score_jobs import score_all
 
 
 def main():

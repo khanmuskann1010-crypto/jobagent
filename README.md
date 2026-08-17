@@ -35,12 +35,12 @@ look like.
 ## Run it
 
 ```bash
-python -m src.main
+python main.py
 ```
 
 With options:
 ```bash
-python -m src.main --keywords "growth marketing" --max-results 30 --min-score 6
+python main.py --keywords "growth marketing" --max-results 30 --min-score 6
 ```
 
 - `--keywords` — search terms sent to France Travail (default: "marketing communication")
@@ -58,11 +58,10 @@ python -m src.main --keywords "growth marketing" --max-results 30 --min-score 6
 
 ```
 job-search-agent/
-├── profile.md              # your matching criteria — edit this freely
+├── profile.md          # your matching criteria — edit this freely
 ├── requirements.txt
 ├── .env.example
-├── src/
-│   ├── fetch_jobs.py        # France Travail API client
-│   ├── score_jobs.py        # Claude scoring logic
-│   └── main.py               # orchestrator — run this
+├── fetch_jobs.py        # France Travail API client
+├── score_jobs.py        # Claude scoring logic
+└── main.py              # orchestrator — run this
 ```
