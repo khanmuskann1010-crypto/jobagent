@@ -81,9 +81,13 @@ def main():
         print(f"  Adzuna fetch failed, skipping this source: {e}")
 
     if args.extra_listings:
-        extra = json.loads(Path(args.extra_listings).read_text())
-        listings += extra
-        print(f"  Merged {len(extra)} pre-fetched listings from {args.extra_listings}")
+        extra_path = Path(args.extra_listings)
+        if extra_path.exists():
+            extra = json.loads(extra_path.read_text())
+            listings += extra
+            print(f"  Merged {len(extra)} pre-fetched listings from {args.extra_listings}")
+        else:
+            print(f"  --extra-listings path {args.extra_listings} doesn't exist, skipping it")
 
     print(f"Fetched {len(listings)} listings across all sources.")
 
