@@ -578,7 +578,7 @@ function speak(text) {
 }
 
 /* Boot */
-appendMessage("agent", "Hi — ask me things like “what's new”, “tell me about job 2”, or “tailor my CV for job 1”. Click a job on the left to ask about it directly.");
+appendMessage("agent", "Hey! Ask me things like “what's new”, “tell me about job 2”, or “tailor my CV for job 1” — or just click a job on the left and I'll tell you about it.");
 refreshAll().catch((e) => appendMessage("agent", `Couldn't load your data: ${e.message}`));
 </script>
 </body>

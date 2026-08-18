@@ -52,7 +52,15 @@ def parse_command(text: str) -> tuple[str, int | None]:
     if any(w in text for w in ("digest", "what's new", "whats new", "today", "new jobs", "list")):
         return "digest", None
 
+    words = re.findall(r"[a-z']+", text)
+    if any(w in words for w in ("hi", "hello", "hey", "yo", "sup", "thanks", "thank")):
+        return "greeting", None
+
     return "unknown", None
+
+
+def _plural(n: int, noun: str) -> str:
+    return f"{n} {noun}" if n == 1 else f"{n} {noun}s"
 
 
 def handle_command(
@@ -62,45 +70,57 @@ def handle_command(
     client: Groq | None,
     cv_text: str | None,
 ) -> str:
+    if intent == "greeting":
+        if not jobs:
+            return "Hey! Your queue's empty right now — run main.py to fetch and score some listings, then come back and ask me what's new."
+        return (
+            f"Hey! You've got {_plural(len(jobs), 'listing')} in your queue. "
+            "Want me to run through what's new, or ask about a specific one?"
+        )
+
     if intent == "digest":
         if not jobs:
-            return "Your queue is empty. Run main.py first."
-        lines = [f"You have {len(jobs)} listings in your queue."]
-        for i, j in enumerate(jobs, start=1):
-            lines.append(f"Job {i}: {j['title']} at {j['company']}, score {j['score']} out of 10.")
-        return " ".join(lines)
+            return "Your queue's empty right now — run main.py to fetch and score some listings, then come back and ask me."
+        top = jobs[0]
+        parts = [
+            f"You've got {_plural(len(jobs), 'listing')} in your queue. The best one right now is "
+            f"{top['title']} at {top['company']} — {top['score']} out of 10. {top['reason']}"
+        ]
+        for i, j in enumerate(jobs[1:], start=2):
+            parts.append(f"Job {i}: {j['title']} at {j['company']}, {j['score']} out of 10.")
+        return " ".join(parts)
 
     if intent in ("details", "tailor"):
         if job_number is None:
-            return "Which job number did you mean?"
+            return "Sure — which job number did you mean?"
         if not (1 <= job_number <= len(jobs)):
-            return f"I only have {len(jobs)} listings in your queue, job {job_number} doesn't exist."
+            return f"Hmm, I've only got {_plural(len(jobs), 'listing')} in your queue — job {job_number} isn't one of them."
 
     if intent == "details":
         job = jobs[job_number - 1]
         return (
-            f"Job {job_number}: {job['title']} at {job['company']}, {job['location']}. "
-            f"Score {job['score']} out of 10. {job['reason']}"
+            f"Job {job_number} is {job['title']} at {job['company']}, based in {job['location']}. "
+            f"I'd give it {job['score']} out of 10 — {job['reason']}"
         )
 
     if intent == "tailor":
         if not cv_text:
-            return "I couldn't find your CV. Fill in cv.md with your CV content first."
+            return "I can't find your CV yet — add your real CV content to cv.md and I'll be able to tailor it for you."
         if client is None:
-            return "Groq API key isn't configured. Add GROQ_API_KEY to .env to use CV tailoring."
+            return "I'd love to help with that, but my Groq API key isn't set up yet — add GROQ_API_KEY to your .env and I'll be ready."
         job = jobs[job_number - 1]
         suggestions = tailor_for_job(client, cv_text, job)
         if "error" in suggestions:
-            return f"Something went wrong tailoring that one: {suggestions['error']}"
+            return f"That one didn't go through cleanly: {suggestions['error']}"
         path = save_suggestions(job, suggestions)
         top = ", ".join(suggestions.get("top_requirements", [])[:3])
         n_bullets = len(suggestions.get("bullet_suggestions", []))
         return (
-            f"Done. The top requirements for job {job_number} are {top}. "
-            f"I've written {n_bullets} tailored bullet suggestions and an opening line to {path}."
+            f"Done! For job {job_number}, the things that matter most are {top}. "
+            f"I've written {n_bullets} tailored bullet suggestions and an opening line for you, saved to {path}."
         )
 
-    return "I didn't catch a command. Try 'what's new', 'tell me about job 2', or 'tailor my CV for job 2'."
+    return "Sorry, I didn't quite catch that — try something like 'what's new', 'tell me about job 2', or 'tailor my CV for job 2'."
 
 
 def speak(text: str, tts_engine) -> None:
@@ -150,8 +170,8 @@ def main():
         microphone = sr.Microphone()
 
     speak(
-        f"Hi. You have {len(jobs)} listings in your queue. "
-        "Say what's new to hear them, or quit to stop.",
+        f"Hey! You've got {_plural(len(jobs), 'listing')} in your queue. "
+        "Say what's new to hear them, or quit whenever you want to stop.",
         tts_engine,
     )
 
