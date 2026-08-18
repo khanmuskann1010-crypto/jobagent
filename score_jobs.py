@@ -46,17 +46,23 @@ Location: {listing['location']}
 Contract type: {listing['contract_type']}
 Description: {listing['description'][:2000]}"""
 
-    response = client.chat.completions.create(
-        model=MODEL,
-        max_tokens=200,
-        response_format={"type": "json_object"},
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": user_content},
-        ],
-    )
-
-    raw_text = response.choices[0].message.content.strip()
+    try:
+        response = client.chat.completions.create(
+            model=MODEL,
+            max_tokens=1024,
+            reasoning_effort="low",
+            response_format={"type": "json_object"},
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": user_content},
+            ],
+        )
+        raw_text = response.choices[0].message.content.strip()
+    except Exception as e:
+        # gpt-oss-120b occasionally burns its whole token budget on hidden
+        # reasoning and returns nothing, which Groq rejects outright - don't
+        # let one bad listing take down the rest of the batch
+        return {"score": 0, "reason": f"Scoring failed for this listing: {e}"}
 
     try:
         parsed = json.loads(raw_text)

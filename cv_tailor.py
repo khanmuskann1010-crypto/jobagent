@@ -51,17 +51,21 @@ Company: {job['company']}
 Location: {job['location']}
 Description: {job['description'][:3000]}"""
 
-    response = client.chat.completions.create(
-        model=MODEL,
-        max_tokens=800,
-        response_format={"type": "json_object"},
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": user_content},
-        ],
-    )
+    try:
+        response = client.chat.completions.create(
+            model=MODEL,
+            max_tokens=1536,
+            reasoning_effort="low",
+            response_format={"type": "json_object"},
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": user_content},
+            ],
+        )
+        raw_text = response.choices[0].message.content.strip()
+    except Exception as e:
+        return {"error": f"Tailoring request failed: {e}"}
 
-    raw_text = response.choices[0].message.content.strip()
     try:
         return json.loads(raw_text)
     except json.JSONDecodeError:
