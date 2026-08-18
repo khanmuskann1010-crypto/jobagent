@@ -133,22 +133,34 @@ Same commands, typed instead of spoken, printed instead of read aloud.
 
 ## Dashboard
 
-A local web app (FastAPI backend + a single-page frontend) with the job
-queue, a real conversational assistant, an applied-jobs tracker, and a
-progress view — built around three columns:
+A local web app (FastAPI backend + a single-page frontend, dark theme only)
+named Dextor — the job queue, a real conversational assistant, a Gmail
+inbox view, a LinkedIn quick-access panel, an applied-jobs tracker, and a
+progress/insights view, built around three columns:
 
-- **Left** — the job queue (all scored listings, highest fit first) over
-  a progress funnel (new → applied → interviewing → rejected)
-- **Center** — a genuine conversational agent (`chat_agent.py`), not a fixed
-  command parser. Ask it anything about your search - it decides for itself
-  when to look up a job, pull full details, tailor your CV, mark something
-  applied, or check progress, via tool calls, the same way an LLM agent
-  works. Typed or spoken (your browser's built-in speech recognition -
-  Safari or Chrome - no extra install or paid API); it only speaks a reply
-  back when you used the mic, never for typed messages. Clicking a job in
-  the queue asks about it directly.
+- **Left** — the job queue (search/filter box on top, all scored listings
+  ranked by fit) → **Insights** (status funnel, score distribution, jobs
+  by source) → **LinkedIn** (quick links to your profile/messages/posting,
+  plus a notes scratchpad saved in your browser)
+- **Center** — Dextor, a genuine conversational agent (`chat_agent.py`),
+  not a fixed command parser. Ask it anything about your search - it
+  decides for itself when to look up a job, pull full details, tailor your
+  CV, mark something applied, or check progress, via tool calls, the same
+  way an LLM agent works. Typed or spoken (your browser's built-in speech
+  recognition - Safari or Chrome - no extra install or paid API); it only
+  speaks a reply back when you used the mic, never for typed messages.
+  Clicking a job in the queue asks about it directly.
 - **Right** — your best current match (highest-scoring listing you haven't
-  acted on) with a "Mark applied" button, over the applied-jobs tracker
+  acted on) with a "Mark applied" button → **Inbox** (recent Gmail
+  messages, with job-relevant ones - interviews, recruiter replies,
+  application confirmations - flagged by the same LLM that scores
+  listings) → the applied-jobs tracker
+
+Other conveniences: a full screen toggle (top right), toast confirmations
+on status changes, a "/" keyboard shortcut to jump to the chat box, and the
+queue/insights/applied panels auto-refresh every 60 seconds (the inbox
+refreshes only when you click its refresh icon, since each load costs a
+Groq call).
 
 ```bash
 pip install -r requirements-api.txt -r requirements.txt
@@ -158,6 +170,36 @@ Then open http://localhost:8000. It reads and writes `jobs.db` directly —
 whatever `main.py` (or the daily Routine) has already scored shows up
 here, and marking something applied here is what the progress funnel and
 Phase 3 tracking are built on.
+
+### Gmail setup (optional — for the Inbox panel)
+
+The Inbox panel needs its own free Google Cloud OAuth app, which only you
+control — it requests read-only access to your inbox, nothing is ever sent
+or deleted. It's entirely optional; without it the panel just shows a
+"Connect Gmail" button and everything else works as normal.
+
+1. Go to [console.cloud.google.com](https://console.cloud.google.com/) and
+   create a new project (free, no billing needed for this).
+2. **APIs & Services → Library** → search "Gmail API" → **Enable**.
+3. **APIs & Services → OAuth consent screen** → choose **External** → fill
+   in an app name and your email → under "Test users", add your own Google
+   account email. (Since this is a personal, unverified app, Google may
+   expire the connection after about a week — if the Inbox panel stops
+   loading, just click "Connect Gmail" again.)
+4. **APIs & Services → Credentials → Create Credentials → OAuth client ID**
+   → Application type **Web application**.
+   - Under "Authorized redirect URIs", add the exact URL you use to open
+     the dashboard, with `/api/gmail/callback` appended — e.g. if you open
+     `https://your-codespace-8000.app.github.dev`, add
+     `https://your-codespace-8000.app.github.dev/api/gmail/callback`. If
+     you're running locally, add `http://localhost:8000/api/gmail/callback`.
+5. Click **Download JSON** on the credential you just created, rename the
+   file to `gmail_credentials.json`, and place it in the project root
+   (it's gitignored — never commit it).
+6. `pip install -r requirements-gmail.txt`, restart the dashboard, and
+   click **Connect Gmail** in the Inbox panel — sign in and approve access.
+   This saves `gmail_token.json` (also gitignored) and the panel starts
+   showing your recent inbox.
 
 ### API reference
 
@@ -173,7 +215,11 @@ identify a listing (e.g. `indeed`/`JOBSEARCH_145`).
 | GET | `/api/best-match` | Highest-scoring job still at status `new` |
 | GET | `/api/progress` | `{total_scored, by_status: {...}}` counts for the funnel |
 | POST | `/api/jobs/{source}/{external_id}/tailor-cv` | Runs `cv_tailor.py` against this listing, returns the suggestions |
-| POST | `/api/chat` | Body `{"message": "..."}` — same command parsing as `voice_agent.py`, returns `{reply, intent, job_number}` |
+| POST | `/api/chat` | Body `{"message": "...", "history": [...]}` — free-form chat with Dextor (`chat_agent.py`), returns `{reply, download_url}` |
+| GET | `/api/gmail/status` | `{connected, credentials_configured}` |
+| GET | `/api/gmail/connect` | Redirects to Google's consent screen |
+| GET | `/api/gmail/callback` | OAuth redirect target — saves the token, then redirects back to `/` |
+| GET | `/api/gmail/inbox` | Recent inbox messages, each tagged `{important, category}` by Groq |
 
 Example:
 ```bash
@@ -208,6 +254,7 @@ job-search-agent/
 ├── requirements.txt
 ├── requirements-voice.txt
 ├── requirements-api.txt
+├── requirements-gmail.txt
 ├── .env.example
 ├── run_daily.sh         # cron wrapper
 ├── fetch_jobs.py        # France Travail API client
@@ -220,6 +267,7 @@ job-search-agent/
 ├── voice_agent.py        # CLI voice interface
 ├── api.py                # dashboard backend (FastAPI)
 ├── chat_agent.py          # tool-using conversational agent for the dashboard chat
+├── gmail_agent.py         # Gmail OAuth + inbox fetch/importance-tagging for the Inbox panel
 ├── frontend/index.html   # dashboard frontend
 └── main.py              # orchestrator — run this
 ```

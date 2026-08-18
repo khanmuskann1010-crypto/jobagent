@@ -190,8 +190,8 @@
     min-height: 0;
     gap: 1.1rem;
   }
-  .col-left { grid-template-rows: minmax(0, 1fr) auto; }
-  .col-right { grid-template-rows: auto minmax(0, 1fr); }
+  .col-left { grid-template-rows: minmax(0, 1fr) auto auto; }
+  .col-right { grid-template-rows: auto minmax(0, 1fr) auto; }
 
   .glass {
     background: var(--glass-bg);
@@ -203,10 +203,12 @@
     animation: rise 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
   .col-left .panel:nth-child(1) { animation-delay: 0.02s; }
-  .col-left .panel:nth-child(2) { animation-delay: 0.10s; }
+  .col-left .panel:nth-child(2) { animation-delay: 0.08s; }
+  .col-left .panel:nth-child(3) { animation-delay: 0.14s; }
   .col-center .chat-panel { animation-delay: 0.06s; }
   .col-right .panel:nth-child(1) { animation-delay: 0.10s; }
   .col-right .panel:nth-child(2) { animation-delay: 0.16s; }
+  .col-right .panel:nth-child(3) { animation-delay: 0.22s; }
   @keyframes rise {
     from { opacity: 0; transform: translateY(14px); }
     to { opacity: 1; transform: translateY(0); }
@@ -292,8 +294,70 @@
   .empty-state { color: var(--muted); font-size: 0.85rem; padding: 1rem 0; text-align: center; }
 
   /* Progress panel */
-  .progress-panel { flex: 0 0 auto; max-height: 46vh; }
+  .progress-panel { flex: 0 0 auto; max-height: 30vh; }
   .insights-body { overflow-y: auto; }
+  .linkedin-panel { flex: 0 0 auto; }
+  .linkedin-links { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.7rem; }
+  .notes-area {
+    width: 100%;
+    resize: vertical;
+    min-height: 64px;
+    max-height: 140px;
+    padding: 0.6rem 0.7rem;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.8rem;
+    line-height: 1.4;
+  }
+  .notes-area:focus { outline: none; border-color: var(--emerald); }
+  .notes-area::placeholder { color: var(--muted); }
+  .notes-saved { font-size: 0.68rem; color: var(--emerald); height: 1em; margin-top: 0.3rem; opacity: 0; transition: opacity 0.3s ease; }
+  .notes-saved.visible { opacity: 1; }
+
+  .applied-panel { flex: 0 0 auto; max-height: 26vh; }
+
+  .inbox-panel { min-height: 0; }
+  .inbox-head-actions { display: flex; align-items: center; gap: 0.5rem; }
+  .refresh-btn {
+    border: none;
+    background: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 0.85rem;
+    padding: 0.2rem;
+    border-radius: 6px;
+    transition: transform 0.4s ease, color 0.2s ease;
+    line-height: 1;
+  }
+  .refresh-btn:hover { color: var(--emerald); }
+  .refresh-btn.spinning { animation: spin 0.8s linear; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .email-row {
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .email-row:last-child { border-bottom: none; }
+  .email-row-top { display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.15rem; }
+  .email-from { font-size: 0.72rem; color: var(--muted); flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .email-date { font-size: 0.68rem; color: var(--muted); flex: 0 0 auto; }
+  .email-subject { font-size: 0.84rem; font-weight: 500; margin: 0 0 0.15rem; }
+  .email-row.unread .email-subject { font-weight: 700; }
+  .email-snippet { font-size: 0.76rem; color: var(--muted); margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .email-tag {
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.1rem 0.4rem;
+    border-radius: 999px;
+    flex: 0 0 auto;
+  }
+  .email-tag.important { background: var(--emerald-wash); color: var(--emerald); }
+  .gmail-connect { text-align: center; padding: 1rem 0.5rem; }
+  .gmail-connect p { color: var(--muted); font-size: 0.8rem; margin: 0 0 0.8rem; }
   .mini-chart-head {
     font-size: 0.68rem;
     font-weight: 700;
@@ -538,6 +602,18 @@
         <div class="funnel" id="source-dist"></div>
       </div>
     </div>
+    <div class="panel glass linkedin-panel">
+      <div class="panel-head">
+        <span class="eyebrow">LinkedIn</span>
+      </div>
+      <div class="linkedin-links">
+        <a class="pill-btn" href="https://www.linkedin.com/in/me/" target="_blank" rel="noopener">My profile</a>
+        <a class="pill-btn" href="https://www.linkedin.com/messaging/" target="_blank" rel="noopener">Messages</a>
+        <a class="pill-btn" href="https://www.linkedin.com/feed/?shareActive=true" target="_blank" rel="noopener">Post update</a>
+      </div>
+      <textarea class="notes-area" id="linkedin-notes" placeholder="Notes — who you messaged, follow-ups to send, insights worth remembering…"></textarea>
+      <div class="notes-saved" id="linkedin-notes-saved">Saved</div>
+    </div>
   </section>
 
   <section class="col-center">
@@ -563,7 +639,19 @@
       </div>
       <div id="best-match-slot"><div class="empty-state">Loading…</div></div>
     </div>
-    <div class="panel glass">
+    <div class="panel glass inbox-panel">
+      <div class="panel-head">
+        <span class="eyebrow">Inbox</span>
+        <div class="inbox-head-actions">
+          <span class="count mono" id="inbox-count"></span>
+          <button class="refresh-btn" id="inbox-refresh" title="Refresh inbox">⟳</button>
+        </div>
+      </div>
+      <div class="panel-body" id="inbox-body">
+        <div class="empty-state">Loading…</div>
+      </div>
+    </div>
+    <div class="panel glass applied-panel">
       <div class="panel-head">
         <span class="eyebrow">Applied</span>
         <span class="count mono" id="applied-count">—</span>
@@ -742,6 +830,98 @@ function renderApplied(list) {
     </div>
   `).join("");
 }
+
+/* Gmail inbox */
+const EMAIL_CATEGORY_LABELS = {
+  interview: "Interview",
+  recruiter_outreach: "Recruiter",
+  application_confirmation: "Confirmation",
+  offer: "Offer",
+  rejection: "Rejection",
+  assessment: "Assessment",
+};
+
+function renderInboxConnectPrompt(message) {
+  document.getElementById("inbox-count").textContent = "";
+  document.getElementById("inbox-body").innerHTML = `
+    <div class="gmail-connect">
+      <p>${escapeHtml(message)}</p>
+      <a class="pill-btn primary" href="/api/gmail/connect">Connect Gmail</a>
+    </div>
+  `;
+}
+
+function renderInbox(emails) {
+  const body = document.getElementById("inbox-body");
+  document.getElementById("inbox-count").textContent = `${emails.length}`;
+  if (!emails.length) {
+    body.innerHTML = '<div class="empty-state">Inbox is empty.</div>';
+    return;
+  }
+  body.innerHTML = emails.map(e => {
+    const tag = e.important
+      ? `<span class="email-tag important">${EMAIL_CATEGORY_LABELS[e.category] || "Important"}</span>`
+      : "";
+    return `
+      <div class="email-row${e.unread ? " unread" : ""}">
+        <div class="email-row-top">
+          <span class="email-from">${escapeHtml(e.from)}</span>
+          ${tag}
+        </div>
+        <p class="email-subject">${escapeHtml(e.subject)}</p>
+        <p class="email-snippet">${escapeHtml(e.snippet)}</p>
+      </div>
+    `;
+  }).join("");
+}
+
+async function loadInbox(spin = false) {
+  const btn = document.getElementById("inbox-refresh");
+  if (spin) btn.classList.add("spinning");
+  try {
+    const status = await api("/api/gmail/status");
+    if (!status.connected) {
+      renderInboxConnectPrompt(
+        status.credentials_configured
+          ? "Not connected yet."
+          : "Gmail isn't set up yet — see the Gmail setup section in README.md."
+      );
+      return;
+    }
+    const emails = await api("/api/gmail/inbox");
+    renderInbox(emails);
+  } catch (e) {
+    document.getElementById("inbox-body").innerHTML =
+      `<div class="empty-state">Couldn't load inbox: ${escapeHtml(e.message)}</div>`;
+  } finally {
+    if (spin) setTimeout(() => btn.classList.remove("spinning"), 800);
+  }
+}
+
+document.getElementById("inbox-refresh").addEventListener("click", () => loadInbox(true));
+
+/* LinkedIn notes - a personal scratchpad, kept client-side only */
+const linkedinNotesEl = document.getElementById("linkedin-notes");
+const linkedinSavedEl = document.getElementById("linkedin-notes-saved");
+linkedinNotesEl.value = localStorage.getItem("dextor-linkedin-notes") || "";
+let linkedinSaveTimer = null;
+linkedinNotesEl.addEventListener("input", () => {
+  clearTimeout(linkedinSaveTimer);
+  linkedinSaveTimer = setTimeout(() => {
+    localStorage.setItem("dextor-linkedin-notes", linkedinNotesEl.value);
+    linkedinSavedEl.classList.add("visible");
+    setTimeout(() => linkedinSavedEl.classList.remove("visible"), 1200);
+  }, 500);
+});
+
+/* "/" jumps to the chat input from anywhere on the page */
+document.addEventListener("keydown", (e) => {
+  const tag = document.activeElement.tagName;
+  if (e.key === "/" && tag !== "INPUT" && tag !== "TEXTAREA") {
+    e.preventDefault();
+    document.getElementById("chat-input").focus();
+  }
+});
 
 function renderProgress(stats) {
   document.getElementById("progress-total").textContent = `${stats.total_scored} scored`;
@@ -968,6 +1148,12 @@ function speak(text) {
 /* Boot */
 appendMessage("agent", "Hey, I'm Dextor — ask me anything: what's new, how a specific listing looks, whether you should apply, or just talk through your search with me. Click the mic if you'd rather talk.");
 refreshAll().catch((e) => appendMessage("agent", `Couldn't load your data: ${e.message}`));
+loadInbox();
+
+// Keep the queue/insights/applied panels fresh automatically. Gmail is
+// excluded - it costs a Groq call per load, so it only refreshes on the
+// explicit refresh button.
+setInterval(refreshAll, 60000);
 </script>
 </body>
 </html>

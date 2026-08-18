@@ -15,12 +15,14 @@ Then open http://localhost:8000
 from pathlib import Path
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 import chat_agent
 import db
+import gmail_agent
 from groq import Groq
 from cv_tailor import OUTPUT_DIR as CV_SUGGESTIONS_DIR
 from cv_tailor import load_cv, save_tailored_cv, tailor_for_job
@@ -131,6 +133,55 @@ def chat(body: ChatMessage):
     history = body.history + [{"role": "user", "content": body.message}]
     reply, download_url = chat_agent.chat(client, history, jobs, cv_text)
     return {"reply": reply, "download_url": download_url}
+
+
+def _gmail_redirect_uri(request: Request) -> str:
+    """Built from the Host header rather than request.url_for, so it works
+    whether you're on localhost or a Codespaces forwarded https:// URL -
+    it just has to match whatever's registered in Google Cloud Console."""
+    host = request.headers.get("host", request.url.hostname)
+    scheme = "http" if host.startswith("localhost") or host.startswith("127.0.0.1") else "https"
+    return f"{scheme}://{host}/api/gmail/callback"
+
+
+@app.get("/api/gmail/status")
+def gmail_status():
+    return {"connected": gmail_agent.is_connected(), "credentials_configured": gmail_agent.CREDENTIALS_PATH.exists()}
+
+
+@app.get("/api/gmail/connect")
+def gmail_connect(request: Request):
+    if not gmail_agent.CREDENTIALS_PATH.exists():
+        raise HTTPException(400, "gmail_credentials.json not found - see the Gmail setup section in README.md.")
+    flow = gmail_agent.build_auth_flow(_gmail_redirect_uri(request))
+    auth_url, _ = flow.authorization_url(access_type="offline", prompt="consent", include_granted_scopes="true")
+    return RedirectResponse(auth_url)
+
+
+@app.get("/api/gmail/callback")
+def gmail_callback(request: Request, code: str | None = None, error: str | None = None):
+    if error:
+        raise HTTPException(400, f"Google denied access: {error}")
+    if not code:
+        raise HTTPException(400, "Missing authorization code from Google.")
+    flow = gmail_agent.build_auth_flow(_gmail_redirect_uri(request))
+    flow.fetch_token(code=code)
+    gmail_agent.TOKEN_PATH.write_text(flow.credentials.to_json())
+    return RedirectResponse("/")
+
+
+@app.get("/api/gmail/inbox")
+def gmail_inbox():
+    try:
+        service = gmail_agent.get_service()
+    except RuntimeError as e:
+        raise HTTPException(400, str(e))
+    try:
+        client = Groq()
+    except Exception:
+        client = None
+    emails = gmail_agent.fetch_recent_emails(service)
+    return gmail_agent.classify_importance(client, emails)
 
 
 app.mount("/cv-notes", StaticFiles(directory=str(CV_SUGGESTIONS_DIR)), name="cv-notes")
