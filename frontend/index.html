@@ -214,6 +214,20 @@
   .msg-agent { align-self: flex-start; background: var(--surface); border: 1px solid var(--border); border-bottom-left-radius: 2px; }
   .msg-user { align-self: flex-end; background: var(--emerald); color: #fff; border-bottom-right-radius: 2px; }
   .msg-meta { font-size: 0.68rem; color: var(--muted); margin-top: 0.3rem; }
+  .download-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: 0.55rem;
+    padding: 0.35rem 0.7rem;
+    border-radius: 6px;
+    background: var(--emerald);
+    color: #fff;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .download-link:hover { background: var(--emerald-dark); }
 
   .chat-input-row { display: flex; gap: 0.5rem; margin-top: 0.8rem; flex: 0 0 auto; }
   .chat-input-row input {
@@ -514,6 +528,16 @@ function appendMessage(role, text) {
   return el;
 }
 
+function addDownloadLink(el, url) {
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "";
+  link.className = "download-link";
+  link.textContent = "⬇ Download tailored CV notes";
+  el.appendChild(link);
+  el.parentElement.scrollTop = el.parentElement.scrollHeight;
+}
+
 async function sendChat(text) {
   if (!text.trim()) return;
   appendMessage("user", text);
@@ -526,6 +550,7 @@ async function sendChat(text) {
       body: JSON.stringify({ message: text }),
     });
     thinking.textContent = res.reply;
+    if (res.download_url) addDownloadLink(thinking, res.download_url);
     speak(res.reply);
     if (res.intent === "tailor" || res.intent === "digest") await refreshAll();
   } catch (e) {

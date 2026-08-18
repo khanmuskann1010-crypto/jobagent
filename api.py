@@ -12,6 +12,8 @@ Run:
 Then open http://localhost:8000
 """
 
+from pathlib import Path
+
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
@@ -19,10 +21,12 @@ from pydantic import BaseModel
 
 import db
 from groq import Groq
+from cv_tailor import OUTPUT_DIR as CV_SUGGESTIONS_DIR
 from cv_tailor import load_cv, save_suggestions, tailor_for_job
 from voice_agent import handle_command, parse_command
 
 load_dotenv()
+CV_SUGGESTIONS_DIR.mkdir(exist_ok=True)  # StaticFiles needs the dir to exist at mount time
 
 app = FastAPI(title="Job Search Agent API")
 
@@ -101,8 +105,8 @@ def tailor_cv(source: str, external_id: str):
     suggestions = tailor_for_job(client, cv_text, job)
     if "error" in suggestions:
         raise HTTPException(502, suggestions["error"])
-    save_suggestions(job, suggestions)
-    return suggestions
+    path = save_suggestions(job, suggestions)
+    return {**suggestions, "download_url": f"/cv-notes/{path.name}"}
 
 
 @app.post("/api/chat")
@@ -122,8 +126,10 @@ def chat(body: ChatMessage):
         client = Groq()
     except Exception:
         client = None
-    reply = handle_command(intent, job_number, jobs, client, cv_text)
-    return {"reply": reply, "intent": intent, "job_number": job_number}
+    reply, download_filename = handle_command(intent, job_number, jobs, client, cv_text)
+    download_url = f"/cv-notes/{download_filename}" if download_filename else None
+    return {"reply": reply, "intent": intent, "job_number": job_number, "download_url": download_url}
 
 
+app.mount("/cv-notes", StaticFiles(directory=str(CV_SUGGESTIONS_DIR)), name="cv-notes")
 app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
