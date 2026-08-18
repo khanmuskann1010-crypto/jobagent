@@ -9,61 +9,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #faf9f6;
-    --bg-2: #f3f1ea;
-    --surface: #ffffff;
-    --surface-2: #f3f1ea;
-    --glass-bg: rgba(255, 255, 255, 0.6);
-    --glass-border: rgba(31, 42, 38, 0.08);
-    --text: #1f2a26;
-    --muted: #5b6b64;
-    --border: #e4e1d8;
-    --emerald: #0f6b4c;
-    --emerald-dark: #0a4a34;
-    --emerald-wash: #e7f5ee;
-    --gold: #c9a227;
-    --gold-wash: #faf3dd;
-    --gold-text: #8a6d1a;
-    --danger: #b5533f;
-    --danger-wash: #f7e9e5;
-    --focus: #1c7a56;
-    --glow-1: rgba(15, 107, 76, 0.12);
-    --glow-2: rgba(201, 162, 39, 0.10);
-    --shadow-color: rgba(31, 42, 38, 0.10);
-    --source-france: #3b6ea5;
-    --source-adzuna: #c26a3f;
-    --source-indeed: #7c5cad;
-  }
-
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --bg: #070b09;
-      --bg-2: #0b1310;
-      --surface: rgba(255, 255, 255, 0.035);
-      --surface-2: rgba(255, 255, 255, 0.02);
-      --glass-bg: rgba(20, 26, 23, 0.55);
-      --glass-border: rgba(255, 255, 255, 0.09);
-      --text: #eef2ef;
-      --muted: #93a39b;
-      --border: rgba(255, 255, 255, 0.09);
-      --emerald: #2bdb9a;
-      --emerald-dark: #22c98d;
-      --emerald-wash: rgba(43, 219, 154, 0.14);
-      --gold: #f0cf5f;
-      --gold-wash: rgba(240, 207, 95, 0.12);
-      --gold-text: #f0cf5f;
-      --danger: #ff8a70;
-      --danger-wash: rgba(255, 138, 112, 0.12);
-      --focus: #2bdb9a;
-      --glow-1: rgba(43, 219, 154, 0.28);
-      --glow-2: rgba(240, 207, 95, 0.16);
-      --shadow-color: rgba(0, 0, 0, 0.45);
-      --source-france: #4a84c4;
-      --source-adzuna: #c97840;
-      --source-indeed: #8f6bc4;
-    }
-  }
-  :root[data-theme="dark"] {
     --bg: #070b09;
     --bg-2: #0b1310;
     --surface: rgba(255, 255, 255, 0.035);
@@ -92,6 +37,7 @@
 
   * { box-sizing: border-box; }
   html, body { height: 100%; }
+  html { color-scheme: dark; }
   body {
     margin: 0;
     background: var(--bg);
@@ -180,7 +126,7 @@
     50% { opacity: 0.6; transform: scale(0.85); }
   }
   .date { font-size: 0.78rem; color: var(--muted); }
-  .theme-toggle {
+  .icon-btn {
     border: 1px solid var(--glass-border);
     background: var(--surface);
     color: var(--text);
@@ -194,7 +140,40 @@
     font-size: 0.95rem;
     transition: transform 0.15s ease, border-color 0.2s ease;
   }
-  .theme-toggle:hover { transform: translateY(-1px) rotate(-8deg); border-color: var(--emerald); }
+  .icon-btn:hover { transform: translateY(-1px) rotate(-8deg); border-color: var(--emerald); }
+
+  .toast-root {
+    position: fixed;
+    bottom: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    z-index: 50;
+    pointer-events: none;
+  }
+  .toast {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    color: var(--text);
+    padding: 0.6rem 1rem;
+    border-radius: 10px;
+    font-size: 0.82rem;
+    box-shadow: 0 8px 24px var(--shadow-color);
+    animation: toast-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) both, toast-out 0.3s ease 2.7s forwards;
+  }
+  .toast.error { border-color: var(--danger); color: var(--danger); }
+  @keyframes toast-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes toast-out {
+    to { opacity: 0; transform: translateY(-6px); }
+  }
 
   main {
     flex: 1 1 auto;
@@ -248,6 +227,20 @@
   }
   .panel-head .count { font-size: 0.75rem; color: var(--muted); }
   .panel-body { overflow-y: auto; min-height: 0; flex: 1 1 auto; }
+  .job-search {
+    width: 100%;
+    margin-bottom: 0.7rem;
+    padding: 0.5rem 0.7rem;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.8rem;
+    flex: 0 0 auto;
+  }
+  .job-search:focus { outline: none; border-color: var(--emerald); }
+  .job-search::placeholder { color: var(--muted); }
 
   /* Job queue */
   .job-card {
@@ -509,13 +502,14 @@
 <body>
 
 <div class="aurora"></div>
+<div class="toast-root" id="toast-root"></div>
 
 <header>
   <h1>Job Search Console — <span class="accent">Dextor</span></h1>
   <div class="header-right">
     <span class="date mono" id="today-date"></span>
     <span class="status-pulse"><span class="dot"></span>live</span>
-    <button class="theme-toggle" id="theme-toggle" title="Switch theme" aria-label="Switch light/dark theme">🌙</button>
+    <button class="icon-btn" id="fullscreen-toggle" title="Toggle full screen" aria-label="Toggle full screen">⛶</button>
   </div>
 </header>
 
@@ -526,6 +520,7 @@
         <span class="eyebrow">Queue</span>
         <span class="count mono" id="queue-count">— jobs</span>
       </div>
+      <input type="search" class="job-search" id="job-search" placeholder="Filter by title, company, location…">
       <div class="panel-body" id="job-list">
         <div class="empty-state">Loading…</div>
       </div>
@@ -589,25 +584,29 @@ const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-mo
 
 const $ = (sel) => document.querySelector(sel);
 
-/* Theme toggle: explicit choice overrides the OS setting, persisted locally */
-const systemPrefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-function applyTheme(theme) {
-  // theme is "light", "dark", or null (follow system)
-  if (theme) {
-    document.documentElement.setAttribute("data-theme", theme);
-  } else {
-    document.documentElement.removeAttribute("data-theme");
-  }
-  const effectiveDark = theme ? theme === "dark" : systemPrefersDark;
-  document.getElementById("theme-toggle").textContent = effectiveDark ? "☀️" : "🌙";
+/* Full screen toggle - Safari needs the webkit-prefixed API */
+const fsBtn = document.getElementById("fullscreen-toggle");
+function isFullscreen() {
+  return !!(document.fullscreenElement || document.webkitFullscreenElement);
 }
-const savedTheme = localStorage.getItem("dextor-theme");
-applyTheme(savedTheme);
-document.getElementById("theme-toggle").addEventListener("click", () => {
-  const current = localStorage.getItem("dextor-theme") || (systemPrefersDark ? "dark" : "light");
-  const next = current === "dark" ? "light" : "dark";
-  localStorage.setItem("dextor-theme", next);
-  applyTheme(next);
+function updateFsIcon() {
+  fsBtn.textContent = isFullscreen() ? "⤢" : "⛶";
+  fsBtn.title = isFullscreen() ? "Exit full screen" : "Enter full screen";
+}
+fsBtn.addEventListener("click", () => {
+  const el = document.documentElement;
+  if (!isFullscreen()) {
+    (el.requestFullscreen || el.webkitRequestFullscreen)?.call(el);
+  } else {
+    (document.exitFullscreen || document.webkitExitFullscreen)?.call(document);
+  }
+});
+document.addEventListener("fullscreenchange", updateFsIcon);
+document.addEventListener("webkitfullscreenchange", updateFsIcon);
+
+document.getElementById("job-search").addEventListener("input", (e) => {
+  jobFilter = e.target.value;
+  renderJobList();
 });
 
 document.getElementById("today-date").textContent = new Date().toLocaleDateString(undefined, {
@@ -650,15 +649,33 @@ function attachTilt(el, maxDeg = 6) {
   el.addEventListener("mouseleave", () => { el.style.transform = ""; });
 }
 
+let jobFilter = "";
+
 function renderJobList() {
   const list = document.getElementById("job-list");
-  document.getElementById("queue-count").textContent = `${jobs.length} jobs`;
   if (!jobs.length) {
+    document.getElementById("queue-count").textContent = "0 jobs";
     list.innerHTML = '<div class="empty-state">No listings yet. Run main.py to fetch and score some.</div>';
     return;
   }
+  // Numbering always reflects position in the full ranked list (what Dextor
+  // means by "job 3"), even when the filter hides some cards.
+  const q = jobFilter.trim().toLowerCase();
+  const visible = jobs
+    .map((j, i) => ({ j, i }))
+    .filter(({ j }) => !q || `${j.title} ${j.company} ${j.location}`.toLowerCase().includes(q));
+
+  document.getElementById("queue-count").textContent = q
+    ? `${visible.length} of ${jobs.length} jobs`
+    : `${jobs.length} jobs`;
+
+  if (!visible.length) {
+    list.innerHTML = '<div class="empty-state">No listings match that filter.</div>';
+    return;
+  }
+
   list.innerHTML = "";
-  jobs.forEach((j, i) => {
+  visible.forEach(({ j, i }) => {
     const card = document.createElement("div");
     card.className = `job-card ${tierClass(j.score)}` + (selectedJob === jobKey(j) ? " selected" : "");
     const statusBadge = j.status !== "new"
@@ -806,13 +823,27 @@ function renderSourceBreakdown(jobList) {
   document.getElementById("source-dist").innerHTML = html;
 }
 
+function showToast(message, kind = "ok") {
+  const root = document.getElementById("toast-root");
+  const el = document.createElement("div");
+  el.className = `toast${kind === "error" ? " error" : ""}`;
+  el.textContent = message;
+  root.appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
 async function setStatus(job, status) {
-  await api(`/api/jobs/${job.source}/${job.id}/status`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ status }),
-  });
-  await refreshAll();
+  try {
+    await api(`/api/jobs/${job.source}/${job.id}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    await refreshAll();
+    showToast(`Marked "${job.title}" as ${status}.`);
+  } catch (e) {
+    showToast(`Couldn't update status: ${e.message}`, "error");
+  }
 }
 
 async function refreshAll() {
