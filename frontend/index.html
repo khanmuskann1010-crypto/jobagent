@@ -209,8 +209,8 @@
     min-height: 0;
     gap: 1.1rem;
   }
-  .col-left { grid-template-rows: minmax(0, 1fr) auto; }
-  .col-right { grid-template-rows: auto auto minmax(0, 1fr); }
+  .col-left { grid-template-rows: minmax(0, 1fr) auto auto; }
+  .col-right { grid-template-rows: auto minmax(0, 1fr); }
 
   .glass {
     background: var(--glass-bg);
@@ -221,12 +221,12 @@
     box-shadow: 0 8px 30px var(--shadow-color);
     animation: rise 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
-  .col-left .panel:nth-child(1) { animation-delay: 0.02s; }
+  .col-left .chat-panel { animation-delay: 0.02s; }
   .col-left .panel:nth-child(2) { animation-delay: 0.08s; }
-  .col-center .chat-panel { animation-delay: 0.06s; }
+  .col-left .panel:nth-child(3) { animation-delay: 0.14s; }
+  .col-center .center-queue-panel { animation-delay: 0.10s; }
   .col-right .panel:nth-child(1) { animation-delay: 0.10s; }
   .col-right .panel:nth-child(2) { animation-delay: 0.16s; }
-  .col-right .panel:nth-child(3) { animation-delay: 0.22s; }
   @keyframes rise {
     from { opacity: 0; transform: translateY(14px); }
     to { opacity: 1; transform: translateY(0); }
@@ -236,6 +236,9 @@
     display: flex;
     flex-direction: column;
     min-height: 0;
+    min-width: 0; /* grid items don't shrink below their content's intrinsic
+                     width by default - without this, text/flex content can
+                     blow the panel past its own column */
     padding: 1.1rem 1.2rem;
   }
   .panel-head {
@@ -430,16 +433,91 @@
   .trend-legend-item { font-size: 0.7rem; color: var(--muted); display: inline-flex; align-items: center; gap: 0.3rem; }
   .trend-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
 
-  /* Chat column */
+  /* Center column: the Dextor orb up top, the job queue below */
   .col-center {
     display: flex;
     flex-direction: column;
     min-height: 0;
-    width: 100%;
-    max-width: 680px;
-    margin: 0 auto;
+    gap: 1.1rem;
   }
-  .chat-panel { padding: 1.1rem 1.3rem; flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
+
+  .orb-stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    padding: 2.75rem 1rem 2.25rem;
+    flex: 0 0 auto;
+    animation: orb-stage-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  @keyframes orb-stage-in {
+    from { opacity: 0; transform: translateY(-10px) scale(0.96); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .dextor-orb {
+    width: 116px;
+    height: 116px;
+    border-radius: 50%;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+  .orb-core {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: conic-gradient(from 0deg, var(--emerald), var(--gold), var(--emerald-dark), var(--emerald));
+    box-shadow: 0 0 50px 8px var(--glow-1), 0 0 90px 24px var(--glow-2);
+    animation: orb-spin 7s linear infinite, orb-breathe 3.4s ease-in-out infinite;
+    transition: box-shadow 0.4s ease, background 0.4s ease;
+  }
+  .orb-ring {
+    position: absolute;
+    inset: -12px;
+    border-radius: 50%;
+    border: 1px solid var(--glass-border);
+    opacity: 0.5;
+    pointer-events: none;
+  }
+  .orb-ring-2 { inset: -22px; opacity: 0.25; }
+  @keyframes orb-spin { to { transform: rotate(360deg); } }
+  @keyframes orb-breathe {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+  }
+  .orb-label {
+    font-family: 'Sora', sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.22em;
+    font-size: 0.72rem;
+    color: var(--muted);
+  }
+  .orb-status { font-size: 0.74rem; color: var(--emerald); min-height: 1em; transition: color 0.3s ease; }
+
+  .dextor-orb.orb-thinking .orb-core {
+    animation-duration: 2s, 0.9s;
+    box-shadow: 0 0 60px 12px var(--glow-1), 0 0 100px 30px var(--glow-2);
+  }
+  .dextor-orb.orb-listening .orb-core {
+    background: conic-gradient(from 0deg, var(--danger), var(--gold), var(--danger));
+    animation-duration: 1.4s, 0.6s;
+    box-shadow: 0 0 60px 12px rgba(255, 138, 112, 0.35), 0 0 100px 28px rgba(255, 138, 112, 0.18);
+  }
+  .dextor-orb.orb-speaking .orb-core { animation-duration: 2.6s, 0.55s; }
+
+  .center-queue-panel { flex: 1 1 auto; min-height: 0; }
+  #job-list.job-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 0.7rem;
+    align-content: start;
+  }
+  #job-list.job-grid .job-card { margin-bottom: 0; }
+
+  .chat-panel { padding: 1.1rem 1.3rem; flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; min-width: 0; }
   .chat-log { flex: 1 1 auto; overflow-y: auto; display: flex; flex-direction: column; gap: 0.7rem; padding-bottom: 0.5rem; }
   .msg {
     max-width: 78%;
@@ -642,7 +720,7 @@
   .upcoming-what { color: var(--text); }
 
   /* Applied panel */
-  .applied-panel { flex: 0 0 auto; max-height: 26vh; }
+  .applied-panel { min-height: 0; }
   .applied-row {
     display: flex;
     justify-content: space-between;
@@ -703,15 +781,18 @@
 
 <main>
   <section class="col col-left">
-    <div class="panel glass">
+    <div class="chat-panel glass">
       <div class="panel-head">
-        <span class="eyebrow">Queue</span>
-        <span class="count mono" id="queue-count">— jobs</span>
+        <span class="eyebrow">Dextor</span>
+        <span class="count" id="chat-hint-count">talk or type</span>
       </div>
-      <input type="search" class="job-search" id="job-search" placeholder="Filter by title, company, location, salary…">
-      <div class="panel-body" id="job-list">
-        <div class="empty-state">Loading…</div>
+      <div class="chat-log" id="chat-log"></div>
+      <div class="chat-input-row">
+        <button class="icon-btn" id="mic-btn" title="Speak">🎙️</button>
+        <input id="chat-input" type="text" placeholder="Ask Dextor anything…" autocomplete="off">
+        <button class="send-btn" id="send-btn">Send</button>
       </div>
+      <div class="chat-hint">Click the mic to talk — I'll only speak back when you do. Otherwise, just type.</div>
     </div>
 
     <div class="panel glass extras-panel">
@@ -751,32 +832,39 @@
         </div>
       </div>
     </div>
-  </section>
 
-  <section class="col-center">
-    <div class="chat-panel glass">
-      <div class="panel-head">
-        <span class="eyebrow">Dextor</span>
-        <span class="count" id="chat-hint-count">talk or type</span>
-      </div>
-      <div class="chat-log" id="chat-log"></div>
-      <div class="chat-input-row">
-        <button class="icon-btn" id="mic-btn" title="Speak">🎙️</button>
-        <input id="chat-input" type="text" placeholder="Ask Dextor anything…" autocomplete="off">
-        <button class="send-btn" id="send-btn">Send</button>
-      </div>
-      <div class="chat-hint">Click the mic to talk — I'll only speak back when you do. Otherwise, just type.</div>
-    </div>
-  </section>
-
-  <section class="col col-right">
     <div class="panel glass">
       <div class="panel-head">
         <span class="eyebrow">Best match</span>
       </div>
       <div id="best-match-slot"><div class="empty-state">Loading…</div></div>
     </div>
+  </section>
 
+  <section class="col-center">
+    <div class="orb-stage">
+      <div class="dextor-orb orb-idle" id="dextor-orb" title="Click to talk to Dextor">
+        <div class="orb-ring"></div>
+        <div class="orb-ring orb-ring-2"></div>
+        <div class="orb-core"></div>
+      </div>
+      <div class="orb-label">DEXTOR</div>
+      <div class="orb-status" id="orb-status">Ready when you are</div>
+    </div>
+
+    <div class="panel glass center-queue-panel">
+      <div class="panel-head">
+        <span class="eyebrow">Application Queue</span>
+        <span class="count mono" id="queue-count">— jobs</span>
+      </div>
+      <input type="search" class="job-search" id="job-search" placeholder="Filter by title, company, location, salary…">
+      <div class="panel-body job-grid" id="job-list">
+        <div class="empty-state">Loading…</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="col col-right">
     <div class="panel glass calendar-panel">
       <div class="panel-head">
         <span class="eyebrow">Calendar</span>
@@ -1186,6 +1274,31 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
+/* Dextor orb - a small motion cue that reacts to what's actually happening:
+   idle (breathing), thinking (a request is in flight), listening (mic is
+   on), speaking (reading a reply aloud). Clicking it starts voice input,
+   same as the mic button. */
+const ORB_STATE_META = {
+  idle: { status: "Ready when you are", color: "var(--emerald)" },
+  thinking: { status: "Thinking…", color: "var(--gold-text)" },
+  listening: { status: "Listening…", color: "var(--danger)" },
+  speaking: { status: "Speaking…", color: "var(--emerald)" },
+};
+function setOrbState(state) {
+  const orb = document.getElementById("dextor-orb");
+  const meta = ORB_STATE_META[state] || ORB_STATE_META.idle;
+  orb.className = "dextor-orb orb-" + state;
+  const statusEl = document.getElementById("orb-status");
+  statusEl.textContent = meta.status;
+  statusEl.style.color = meta.color;
+}
+function currentOrbState() {
+  return document.getElementById("dextor-orb").className.replace("dextor-orb orb-", "").trim() || "idle";
+}
+document.getElementById("dextor-orb").addEventListener("click", () => {
+  document.getElementById("mic-btn").click();
+});
+
 /* Funnel bars render at 0% then animate to their real width on the next
    frame, so every refresh reads as the bars growing in rather than just
    appearing - reused by the progress funnel and both mini charts below. */
@@ -1488,6 +1601,7 @@ async function sendChat(text, { fromVoice = false } = {}) {
   appendMessage("user", text);
   document.getElementById("chat-input").value = "";
   const thinking = appendTyping();
+  setOrbState("thinking");
   try {
     const res = await api("/api/chat", {
       method: "POST",
@@ -1497,7 +1611,12 @@ async function sendChat(text, { fromVoice = false } = {}) {
     thinking.innerHTML = "";
     thinking.textContent = res.reply;
     if (res.download_url) addDownloadLink(thinking, res.download_url);
-    if (fromVoice) speak(res.reply);
+    if (fromVoice) {
+      setOrbState("speaking");
+      speak(res.reply);
+    } else {
+      setOrbState("idle");
+    }
 
     chatHistory.push({ role: "user", content: text });
     chatHistory.push({ role: "assistant", content: res.reply });
@@ -1507,6 +1626,7 @@ async function sendChat(text, { fromVoice = false } = {}) {
   } catch (e) {
     thinking.innerHTML = "";
     thinking.textContent = `Something went wrong: ${e.message}`;
+    setOrbState("idle");
   }
 }
 
@@ -1537,21 +1657,32 @@ if (!SpeechRecognitionImpl) {
     const text = e.results[0][0].transcript;
     sendChat(text, { fromVoice: true });
   };
-  recognizer.onend = () => { listening = false; micBtn.classList.remove("listening"); };
-  recognizer.onerror = () => { listening = false; micBtn.classList.remove("listening"); };
+  recognizer.onend = () => {
+    listening = false;
+    micBtn.classList.remove("listening");
+    if (currentOrbState() === "listening") setOrbState("idle");
+  };
+  recognizer.onerror = () => {
+    listening = false;
+    micBtn.classList.remove("listening");
+    if (currentOrbState() === "listening") setOrbState("idle");
+  };
 
   micBtn.addEventListener("click", () => {
     if (listening) { recognizer.stop(); return; }
     listening = true;
     micBtn.classList.add("listening");
+    setOrbState("listening");
     recognizer.start();
   });
 }
 
 function speak(text) {
-  if (!window.speechSynthesis) return;
+  if (!window.speechSynthesis) { setOrbState("idle"); return; }
   window.speechSynthesis.cancel();
   const utter = new SpeechSynthesisUtterance(text);
+  utter.onend = () => setOrbState("idle");
+  utter.onerror = () => setOrbState("idle");
   window.speechSynthesis.speak(utter);
 }
 
