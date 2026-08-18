@@ -154,6 +154,11 @@
     color: var(--gold-text);
     position: relative;
     z-index: 1;
+    animation: banner-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  @keyframes banner-in {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 
   .toast-root {
@@ -269,6 +274,13 @@
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
     transform-style: preserve-3d;
     will-change: transform;
+    /* opacity-only, so it never fights the mousemove tilt effect's own
+       transform (set inline via JS) */
+    animation: card-in 0.3s ease both;
+  }
+  @keyframes card-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
   }
   .job-card:hover { border-color: var(--emerald); box-shadow: 0 10px 24px var(--shadow-color); }
   .job-card.selected { border-color: var(--emerald); background: var(--emerald-wash); }
@@ -328,7 +340,11 @@
   .tab-btn.active { color: var(--emerald); background: var(--emerald-wash); }
   .tab-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
   .tab-panel { display: none; }
-  .tab-panel.active { display: block; }
+  .tab-panel.active { display: block; animation: tab-in 0.25s ease both; }
+  @keyframes tab-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
 
   .linkedin-links { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.7rem; }
   .notes-area {
@@ -608,6 +624,11 @@
     display: flex; align-items: center; justify-content: center;
     font-size: 0.7rem; border-radius: 6px; color: var(--text);
     position: relative;
+    animation: cal-cell-in 0.25s ease both;
+  }
+  @keyframes cal-cell-in {
+    from { opacity: 0; transform: scale(0.85); }
+    to { opacity: 1; transform: scale(1); }
   }
   .cal-cell.empty { visibility: hidden; }
   .cal-cell.today { border: 1px solid var(--emerald); font-weight: 700; }
@@ -1165,6 +1186,16 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
+/* Funnel bars render at 0% then animate to their real width on the next
+   frame, so every refresh reads as the bars growing in rather than just
+   appearing - reused by the progress funnel and both mini charts below. */
+function animateFunnelFills(containerId) {
+  const container = document.getElementById(containerId);
+  const fills = container.querySelectorAll(".funnel-fill");
+  void container.offsetHeight; // force a reflow so the 0% state registers first
+  fills.forEach(f => { f.style.width = f.dataset.width || "0%"; });
+}
+
 function renderProgress(stats) {
   document.getElementById("progress-total").textContent = `${stats.total_scored} scored`;
   const rows = [
@@ -1180,11 +1211,12 @@ function renderProgress(stats) {
     return `
       <div class="funnel-row">
         <span class="funnel-label">${r.label}</span>
-        <span class="funnel-track"><span class="funnel-fill ${r.cls}" style="width:${pct}%"></span></span>
+        <span class="funnel-track"><span class="funnel-fill ${r.cls}" style="width:0%" data-width="${pct}%"></span></span>
         <span class="funnel-count mono">${count}</span>
       </div>
     `;
   }).join("");
+  animateFunnelFills("funnel");
 }
 
 const SCORE_TIERS = [
@@ -1202,12 +1234,13 @@ function renderScoreDistribution(jobList) {
     return `
       <div class="funnel-row" title="${t.tooltip}: ${count} of ${total} jobs">
         <span class="funnel-label">${t.label}</span>
-        <span class="funnel-track"><span class="funnel-fill ${t.cls}" style="width:${pct}%"></span></span>
+        <span class="funnel-track"><span class="funnel-fill ${t.cls}" style="width:0%" data-width="${pct}%"></span></span>
         <span class="funnel-count mono">${count}</span>
       </div>
     `;
   }).join("");
   document.getElementById("score-dist").innerHTML = html;
+  animateFunnelFills("score-dist");
 }
 
 const SOURCE_LABELS = {
@@ -1237,12 +1270,13 @@ function renderSourceBreakdown(jobList) {
     return `
       <div class="funnel-row" title="${label}: ${count} of ${total} jobs">
         <span class="funnel-label">${label}</span>
-        <span class="funnel-track"><span class="funnel-fill" style="width:${pct}%;background:${color}"></span></span>
+        <span class="funnel-track"><span class="funnel-fill" style="width:0%;background:${color}" data-width="${pct}%"></span></span>
         <span class="funnel-count mono">${count}</span>
       </div>
     `;
   }).join("");
   document.getElementById("source-dist").innerHTML = html;
+  animateFunnelFills("source-dist");
 }
 
 /* Applications-over-time trend - one axis, thin lines, legend never color-alone */
@@ -1286,6 +1320,16 @@ function renderTrendChart(trend) {
     <svg viewBox="0 0 ${w} ${h}" class="trend-svg" preserveAspectRatio="none">${lines}</svg>
     <div class="trend-legend">${legend}</div>
   `;
+
+  // Draw each line in from left to right via the classic stroke-dashoffset trick.
+  el.querySelectorAll("polyline").forEach((poly) => {
+    const length = poly.getTotalLength();
+    poly.style.strokeDasharray = String(length);
+    poly.style.strokeDashoffset = String(length);
+    void poly.getBoundingClientRect(); // force a reflow before animating
+    poly.style.transition = "stroke-dashoffset 1s ease";
+    poly.style.strokeDashoffset = "0";
+  });
 }
 
 /* Interview calendar - compact month view + upcoming list */
