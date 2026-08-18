@@ -24,7 +24,6 @@ from pydantic import BaseModel
 
 import chat_agent
 import db
-import gmail_agent
 from groq import Groq
 from cover_letter import generate_cover_letter, save_cover_letter
 from cv_tailor import OUTPUT_DIR as CV_SUGGESTIONS_DIR
@@ -33,6 +32,13 @@ from cv_tailor import load_cv, save_tailored_cv, tailor_for_job
 load_dotenv()
 CV_SUGGESTIONS_DIR.mkdir(exist_ok=True)  # StaticFiles needs the dir to exist at mount time
 db.auto_archive_stale_jobs()  # quietly tidy up on every server start, same housekeeping main.py does
+
+try:
+    import gmail_agent
+    GMAIL_IMPORT_ERROR = None
+except ImportError as e:
+    gmail_agent = None
+    GMAIL_IMPORT_ERROR = str(e)  # Gmail is optional - don't crash the whole server over it
 
 app = FastAPI(title="Job Search Agent API")
 
@@ -213,13 +219,25 @@ def _gmail_redirect_uri(request: Request) -> str:
     return f"{scheme}://{host}/api/gmail/callback"
 
 
+def _require_gmail():
+    if gmail_agent is None:
+        raise HTTPException(
+            400,
+            "Gmail support isn't installed - run `pip install -r requirements-gmail.txt` "
+            f"and restart the server to use the Inbox panel. ({GMAIL_IMPORT_ERROR})",
+        )
+
+
 @app.get("/api/gmail/status")
 def gmail_status():
+    if gmail_agent is None:
+        return {"connected": False, "credentials_configured": False}
     return {"connected": gmail_agent.is_connected(), "credentials_configured": gmail_agent.CREDENTIALS_PATH.exists()}
 
 
 @app.get("/api/gmail/connect")
 def gmail_connect(request: Request):
+    _require_gmail()
     if not gmail_agent.CREDENTIALS_PATH.exists():
         raise HTTPException(400, "gmail_credentials.json not found - see the Gmail setup section in README.md.")
     flow = gmail_agent.build_auth_flow(_gmail_redirect_uri(request))
@@ -229,6 +247,7 @@ def gmail_connect(request: Request):
 
 @app.get("/api/gmail/callback")
 def gmail_callback(request: Request, code: str | None = None, error: str | None = None):
+    _require_gmail()
     if error:
         raise HTTPException(400, f"Google denied access: {error}")
     if not code:
@@ -241,6 +260,7 @@ def gmail_callback(request: Request, code: str | None = None, error: str | None 
 
 @app.get("/api/gmail/inbox")
 def gmail_inbox():
+    _require_gmail()
     try:
         service = gmail_agent.get_service()
     except RuntimeError as e:
