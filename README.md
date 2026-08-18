@@ -2,10 +2,16 @@
 
 Fetches marketing/growth job listings from France Travail, Adzuna, and
 Indeed, skips anything you've already seen, scores each new listing
-against your profile using Claude, and tracks it through to applied.
-On top of the core pipeline: Claude-powered CV tailoring per listing, a
+against your profile using an LLM, and tracks it through to applied.
+On top of the core pipeline: LLM-powered CV tailoring per listing, a
 CLI voice interface, and a web dashboard with a chat/voice panel, an
 application tracker, and a progress view.
+
+Scoring and CV tailoring run on [Groq's free API](https://console.groq.com)
+(`openai/gpt-oss-120b`) by default — no credit card required, unlike the
+Anthropic API. If you'd rather use Claude, swap the `groq` client calls in
+`score_jobs.py`, `cv_tailor.py`, `voice_agent.py`, and `api.py` back to the
+`anthropic` SDK; the code is structured the same way either way.
 
 See `build-plan.md` for the original phased plan.
 
@@ -17,8 +23,8 @@ See `build-plan.md` for the original phased plan.
    ```
    Voice mode needs an extra install — see [Voice interface](#voice-interface) below.
 
-2. **Get your API credentials**
-   - Anthropic API key: https://console.anthropic.com/settings/keys
+2. **Get your API credentials** (all three are free, no card required)
+   - Groq API key: https://console.groq.com/keys
    - France Travail client ID/secret: register a free account at
      https://francetravail.io, then subscribe your application to the
      "Offres d'emploi v2" product to get credentials
@@ -60,7 +66,7 @@ Each run:
    e.g. missing credentials, is skipped with a warning rather than
    crashing the whole run)
 2. Drops anything already recorded in `jobs.db` from a previous run
-3. Scores only the new listings with Claude, against `profile.md`
+3. Scores only the new listings with an LLM, against `profile.md`
 4. Prints a numbered, ranked list to the terminal
 5. Writes `jobs_digest.html` — open it in a browser, or host it (e.g. on
    Netlify) for a daily-review page
@@ -70,17 +76,17 @@ Each run:
 
 ## CV tailoring
 
-`cv_tailor.py` sends your CV (`cv.md`) plus one job listing to Claude and
+`cv_tailor.py` sends your CV (`cv.md`) plus one job listing to the LLM and
 gets back the job's top requirements, how your CV maps to each, 2-4
 tailored bullet suggestions, and a tailored opening line for outreach —
 written to `cv_suggestions/job_<N>_<company>.md`. It's used by voice mode's
 "tailor" command; you can also call it directly:
 
 ```python
-import anthropic
+from groq import Groq
 from cv_tailor import load_cv, tailor_for_job, save_suggestions
 
-client = anthropic.Anthropic()
+client = Groq()
 cv_text = load_cv()
 job = {...}  # a listing dict, e.g. from last_run.json
 suggestions = tailor_for_job(client, cv_text, job)
@@ -201,8 +207,8 @@ job-search-agent/
 ├── indeed_source.py      # parses Claude's Indeed connector output into the common listing schema
 ├── db.py                # SQLite store: dedup history + application status (jobs.db, tracked in git)
 ├── digest.py            # styled HTML digest generator
-├── score_jobs.py        # Claude scoring logic
-├── cv_tailor.py          # Claude CV-tailoring logic
+├── score_jobs.py        # LLM scoring logic (Groq by default)
+├── cv_tailor.py          # LLM CV-tailoring logic (Groq by default)
 ├── voice_agent.py        # CLI voice interface
 ├── api.py                # dashboard backend (FastAPI)
 ├── frontend/index.html   # dashboard frontend

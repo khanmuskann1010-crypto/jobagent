@@ -1,16 +1,18 @@
 """
-Uses Claude to tailor CV suggestions to one specific job listing: which
-requirements matter most, how your existing experience maps to them, and
-concrete bullet/opening-line rewrites to use when you apply.
+Uses Groq's free API (openai/gpt-oss-120b) to tailor CV suggestions to one
+specific job listing: which requirements matter most, how your existing
+experience maps to them, and concrete bullet/opening-line rewrites to use
+when you apply.
 """
 
 import json
 from pathlib import Path
 
-import anthropic
+from groq import Groq
 
 CV_PATH = Path(__file__).parent / "cv.md"
 OUTPUT_DIR = Path(__file__).parent / "cv_suggestions"
+MODEL = "openai/gpt-oss-120b"
 
 SYSTEM_PROMPT = """You are a resume coach helping one specific candidate tailor \
 their CV to a single job listing. You will be given the candidate's CV and a \
@@ -39,7 +41,7 @@ def load_cv() -> str:
     return CV_PATH.read_text()
 
 
-def tailor_for_job(client: anthropic.Anthropic, cv_text: str, job: dict) -> dict:
+def tailor_for_job(client: Groq, cv_text: str, job: dict) -> dict:
     user_content = f"""CANDIDATE CV:
 {cv_text}
 
@@ -49,14 +51,17 @@ Company: {job['company']}
 Location: {job['location']}
 Description: {job['description'][:3000]}"""
 
-    response = client.messages.create(
-        model="claude-sonnet-5",
+    response = client.chat.completions.create(
+        model=MODEL,
         max_tokens=800,
-        system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": user_content}],
+        response_format={"type": "json_object"},
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": user_content},
+        ],
     )
 
-    raw_text = response.content[0].text.strip()
+    raw_text = response.choices[0].message.content.strip()
     try:
         return json.loads(raw_text)
     except json.JSONDecodeError:

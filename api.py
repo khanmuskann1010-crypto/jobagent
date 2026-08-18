@@ -16,8 +16,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-import anthropic
 import db
+from groq import Groq
 from cv_tailor import load_cv, save_suggestions, tailor_for_job
 from voice_agent import handle_command, parse_command
 
@@ -91,7 +91,10 @@ def tailor_cv(source: str, external_id: str):
         cv_text = load_cv()
     except FileNotFoundError as e:
         raise HTTPException(400, str(e))
-    client = anthropic.Anthropic()
+    try:
+        client = Groq()
+    except Exception:
+        raise HTTPException(400, "GROQ_API_KEY isn't configured - add it to .env to use CV tailoring.")
     suggestions = tailor_for_job(client, cv_text, job)
     if "error" in suggestions:
         raise HTTPException(502, suggestions["error"])
@@ -112,7 +115,10 @@ def chat(body: ChatMessage):
     except FileNotFoundError:
         cv_text = None
 
-    client = anthropic.Anthropic()
+    try:
+        client = Groq()
+    except Exception:
+        client = None
     reply = handle_command(intent, job_number, jobs, client, cv_text)
     return {"reply": reply, "intent": intent, "job_number": job_number}
 

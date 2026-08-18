@@ -25,8 +25,8 @@ import json
 import re
 from pathlib import Path
 
-import anthropic
 from dotenv import load_dotenv
+from groq import Groq
 
 from cv_tailor import load_cv, save_suggestions, tailor_for_job
 
@@ -67,7 +67,7 @@ def handle_command(
     intent: str,
     job_number: int | None,
     jobs: list[dict],
-    client: anthropic.Anthropic,
+    client: Groq | None,
     cv_text: str | None,
 ) -> str:
     if intent == "digest":
@@ -94,6 +94,8 @@ def handle_command(
     if intent == "tailor":
         if not cv_text:
             return "I couldn't find your CV. Fill in cv.md with your CV content first."
+        if client is None:
+            return "Groq API key isn't configured. Add GROQ_API_KEY to .env to use CV tailoring."
         job = jobs[job_number - 1]
         suggestions = tailor_for_job(client, cv_text, job)
         if "error" in suggestions:
@@ -135,7 +137,10 @@ def main():
     args = parser.parse_args()
 
     jobs = load_last_run()
-    client = anthropic.Anthropic()
+    try:
+        client = Groq()
+    except Exception:
+        client = None
     try:
         cv_text = load_cv()
     except FileNotFoundError:
