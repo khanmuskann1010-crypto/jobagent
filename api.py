@@ -12,6 +12,7 @@ Run:
 Then open http://localhost:8000
 """
 
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -20,6 +21,8 @@ import db
 from groq import Groq
 from cv_tailor import load_cv, save_suggestions, tailor_for_job
 from voice_agent import handle_command, parse_command
+
+load_dotenv()
 
 app = FastAPI(title="Job Search Agent API")
 
