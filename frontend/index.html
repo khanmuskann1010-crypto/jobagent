@@ -221,12 +221,12 @@
     box-shadow: 0 8px 30px var(--shadow-color);
     animation: rise 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
-  .col-left .chat-panel { animation-delay: 0.02s; }
+  .col-left .panel:nth-child(1) { animation-delay: 0.02s; }
   .col-left .panel:nth-child(2) { animation-delay: 0.08s; }
   .col-left .panel:nth-child(3) { animation-delay: 0.14s; }
   .col-center .center-queue-panel { animation-delay: 0.10s; }
   .col-right .panel:nth-child(1) { animation-delay: 0.10s; }
-  .col-right .panel:nth-child(2) { animation-delay: 0.16s; }
+  .col-right .chat-panel { animation-delay: 0.16s; }
   @keyframes rise {
     from { opacity: 0; transform: translateY(14px); }
     to { opacity: 1; transform: translateY(0); }
@@ -455,39 +455,70 @@
     from { opacity: 0; transform: translateY(-10px) scale(0.96); }
     to { opacity: 1; transform: translateY(0) scale(1); }
   }
+  /* A genuine 3D shape, not a flat circle: a glowing core with three
+     tilted rings orbiting it on different axes, like a small gyroscope -
+     built with CSS 3D transforms (perspective + preserve-3d), no external
+     library. Each state changes the spin speed/color, not just the glow. */
   .dextor-orb {
-    width: 116px;
-    height: 116px;
-    border-radius: 50%;
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    width: 132px;
+    height: 132px;
+    perspective: 560px;
     cursor: pointer;
   }
-  .orb-core {
+  .orb-scene {
     width: 100%;
     height: 100%;
-    border-radius: 50%;
-    background: conic-gradient(from 0deg, var(--emerald), var(--gold), var(--emerald-dark), var(--emerald));
-    box-shadow: 0 0 50px 8px var(--glow-1), 0 0 90px 24px var(--glow-2);
-    animation: orb-spin 7s linear infinite, orb-breathe 3.4s ease-in-out infinite;
-    transition: box-shadow 0.4s ease, background 0.4s ease;
+    position: relative;
+    transform-style: preserve-3d;
+    animation: orb-tumble 14s linear infinite;
+    will-change: transform;
   }
-  .orb-ring {
+  @keyframes orb-tumble {
+    from { transform: rotateY(0deg) rotateX(8deg); }
+    to   { transform: rotateY(360deg) rotateX(8deg); }
+  }
+  .orb-core-3d {
     position: absolute;
-    inset: -12px;
+    inset: 32px;
     border-radius: 50%;
-    border: 1px solid var(--glass-border);
-    opacity: 0.5;
-    pointer-events: none;
+    background:
+      radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.55), transparent 42%),
+      conic-gradient(from 0deg, var(--emerald), var(--gold), var(--emerald-dark), var(--emerald));
+    box-shadow: 0 0 50px 8px var(--glow-1), 0 0 90px 24px var(--glow-2);
+    animation: orb-core-spin 5s linear infinite, orb-breathe 3.4s ease-in-out infinite;
+    transition: box-shadow 0.4s ease;
+    will-change: transform;
   }
-  .orb-ring-2 { inset: -22px; opacity: 0.25; }
-  @keyframes orb-spin { to { transform: rotate(360deg); } }
+  @keyframes orb-core-spin { to { transform: rotate(360deg); } }
   @keyframes orb-breathe {
     0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.05); }
+    50% { transform: scale(1.07); }
   }
+  .orb-ring-3d {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 2px solid var(--emerald);
+    opacity: 0.55;
+    pointer-events: none;
+    will-change: transform;
+  }
+  @keyframes ring-a-spin {
+    from { transform: rotateX(72deg) rotateZ(0deg); }
+    to   { transform: rotateX(72deg) rotateZ(360deg); }
+  }
+  @keyframes ring-b-spin {
+    from { transform: rotateX(70deg) rotateY(60deg) rotateZ(0deg); }
+    to   { transform: rotateX(70deg) rotateY(60deg) rotateZ(-360deg); }
+  }
+  @keyframes ring-c-spin {
+    from { transform: rotateY(75deg) rotateX(35deg) rotateZ(0deg); }
+    to   { transform: rotateY(75deg) rotateX(35deg) rotateZ(360deg); }
+  }
+  .orb-ring-a { animation: ring-a-spin 6s linear infinite; }
+  .orb-ring-b { border-color: var(--gold); opacity: 0.42; animation: ring-b-spin 8s linear infinite; }
+  .orb-ring-c { border-color: var(--emerald-dark); opacity: 0.32; animation: ring-c-spin 11s linear infinite; }
+
   .orb-label {
     font-family: 'Sora', sans-serif;
     font-weight: 700;
@@ -497,16 +528,37 @@
   }
   .orb-status { font-size: 0.74rem; color: var(--emerald); min-height: 1em; transition: color 0.3s ease; }
 
-  .dextor-orb.orb-thinking .orb-core {
-    animation-duration: 2s, 0.9s;
+  /* Thinking: everything spins noticeably faster - visibly "working" */
+  .dextor-orb.orb-thinking .orb-scene { animation-duration: 5s; }
+  .dextor-orb.orb-thinking .orb-core-3d {
+    animation-duration: 2.2s, 0.9s;
     box-shadow: 0 0 60px 12px var(--glow-1), 0 0 100px 30px var(--glow-2);
   }
-  .dextor-orb.orb-listening .orb-core {
-    background: conic-gradient(from 0deg, var(--danger), var(--gold), var(--danger));
-    animation-duration: 1.4s, 0.6s;
+  .dextor-orb.orb-thinking .orb-ring-a { animation-duration: 2.4s; }
+  .dextor-orb.orb-thinking .orb-ring-b { animation-duration: 3.2s; }
+  .dextor-orb.orb-thinking .orb-ring-c { animation-duration: 4s; }
+
+  /* Listening: shifts warm/red, spins fastest - unmistakably "live" */
+  .dextor-orb.orb-listening .orb-core-3d {
+    background:
+      radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.55), transparent 42%),
+      conic-gradient(from 0deg, var(--danger), var(--gold), var(--danger));
+    animation-duration: 1.5s, 0.55s;
     box-shadow: 0 0 60px 12px rgba(255, 138, 112, 0.35), 0 0 100px 28px rgba(255, 138, 112, 0.18);
   }
-  .dextor-orb.orb-speaking .orb-core { animation-duration: 2.6s, 0.55s; }
+  .dextor-orb.orb-listening .orb-ring-a,
+  .dextor-orb.orb-listening .orb-ring-b,
+  .dextor-orb.orb-listening .orb-ring-c { border-color: var(--danger); animation-duration: 1.8s; }
+
+  /* Speaking: a rhythmic talking pulse instead of the smooth idle breathing */
+  .dextor-orb.orb-speaking .orb-scene { animation-duration: 6s; }
+  .dextor-orb.orb-speaking .orb-core-3d {
+    animation: orb-core-spin 3.2s linear infinite, orb-talk-pulse 0.5s ease-in-out infinite;
+  }
+  @keyframes orb-talk-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+  }
 
   .center-queue-panel { flex: 1 1 auto; min-height: 0; }
   #job-list.job-grid {
@@ -781,18 +833,17 @@
 
 <main>
   <section class="col col-left">
-    <div class="chat-panel glass">
+    <div class="panel glass applied-panel">
       <div class="panel-head">
-        <span class="eyebrow">Dextor</span>
-        <span class="count" id="chat-hint-count">talk or type</span>
+        <span class="eyebrow">Applied</span>
+        <div class="inbox-head-actions">
+          <span class="count mono" id="applied-count">—</span>
+          <a class="refresh-btn" id="export-csv" href="/api/export/applied.csv" download title="Export CSV">⬇</a>
+        </div>
       </div>
-      <div class="chat-log" id="chat-log"></div>
-      <div class="chat-input-row">
-        <button class="icon-btn" id="mic-btn" title="Speak">🎙️</button>
-        <input id="chat-input" type="text" placeholder="Ask Dextor anything…" autocomplete="off">
-        <button class="send-btn" id="send-btn">Send</button>
+      <div class="panel-body" id="applied-list">
+        <div class="empty-state">Nothing applied to yet.</div>
       </div>
-      <div class="chat-hint">Click the mic to talk — I'll only speak back when you do. Otherwise, just type.</div>
     </div>
 
     <div class="panel glass extras-panel">
@@ -844,9 +895,12 @@
   <section class="col-center">
     <div class="orb-stage">
       <div class="dextor-orb orb-idle" id="dextor-orb" title="Click to talk to Dextor">
-        <div class="orb-ring"></div>
-        <div class="orb-ring orb-ring-2"></div>
-        <div class="orb-core"></div>
+        <div class="orb-scene">
+          <div class="orb-ring-3d orb-ring-a"></div>
+          <div class="orb-ring-3d orb-ring-b"></div>
+          <div class="orb-ring-3d orb-ring-c"></div>
+          <div class="orb-core-3d"></div>
+        </div>
       </div>
       <div class="orb-label">DEXTOR</div>
       <div class="orb-status" id="orb-status">Ready when you are</div>
@@ -878,17 +932,18 @@
       <div id="cal-upcoming"><div class="empty-state">No interviews scheduled.</div></div>
     </div>
 
-    <div class="panel glass applied-panel">
+    <div class="chat-panel glass">
       <div class="panel-head">
-        <span class="eyebrow">Applied</span>
-        <div class="inbox-head-actions">
-          <span class="count mono" id="applied-count">—</span>
-          <a class="refresh-btn" id="export-csv" href="/api/export/applied.csv" download title="Export CSV">⬇</a>
-        </div>
+        <span class="eyebrow">Dextor</span>
+        <span class="count" id="chat-hint-count">talk or type</span>
       </div>
-      <div class="panel-body" id="applied-list">
-        <div class="empty-state">Nothing applied to yet.</div>
+      <div class="chat-log" id="chat-log"></div>
+      <div class="chat-input-row">
+        <button class="icon-btn" id="mic-btn" title="Speak">🎙️</button>
+        <input id="chat-input" type="text" placeholder="Ask Dextor anything…" autocomplete="off">
+        <button class="send-btn" id="send-btn">Send</button>
       </div>
+      <div class="chat-hint">Click the mic to talk — I'll only speak back when you do. Otherwise, just type.</div>
     </div>
   </section>
 </main>
