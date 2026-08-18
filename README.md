@@ -79,8 +79,9 @@ Each run:
 `cv_tailor.py` sends your CV (`cv.md`) plus one job listing to the LLM and
 gets back the job's top requirements, how your CV maps to each, 2-4
 tailored bullet suggestions, and a tailored opening line for outreach —
-written to `cv_suggestions/job_<N>_<company>.md`. It's used by voice mode's
-"tailor" command; you can also call it directly:
+written as a PDF to `cv_suggestions/<source>_<id>_<company>.pdf`. It's used
+by voice mode's "tailor" command and the dashboard's download link; you can
+also call it directly:
 
 ```python
 from groq import Groq
@@ -88,7 +89,7 @@ from cv_tailor import load_cv, tailor_for_job, save_suggestions
 
 client = Groq()
 cv_text = load_cv()
-job = {...}  # a listing dict, e.g. from last_run.json
+job = {...}  # a listing dict, e.g. from db.get_all_jobs()
 suggestions = tailor_for_job(client, cv_text, job)
 save_suggestions(job, suggestions, index=1)
 ```
