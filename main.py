@@ -1,7 +1,9 @@
 """
 Phase 2: fetch from France Travail + Adzuna -> drop listings already seen
-in a previous run -> score new ones with Claude -> print ranked results ->
-write a styled HTML digest -> save the run for voice_agent.py to reference.
+in a previous run -> score new ones with an LLM -> print ranked results ->
+write a styled HTML digest. Scored listings persist in jobs.db, which is
+what voice_agent.py and the web dashboard (api.py) both read from - so
+anything scored here shows up there immediately.
 
 Usage:
     python main.py
@@ -28,7 +30,6 @@ from digest import generate_html
 from score_jobs import score_all
 
 DEFAULT_DIGEST_PATH = Path(__file__).parent / "jobs_digest.html"
-LAST_RUN_PATH = Path(__file__).parent / "last_run.json"
 
 
 def main():
@@ -99,7 +100,6 @@ def main():
     if not new_listings:
         print("Nothing new today.")
         generate_html([], digest_path)
-        LAST_RUN_PATH.write_text(json.dumps([], ensure_ascii=False, indent=2))
         print(f"Digest written to {digest_path}")
         return
 
@@ -122,9 +122,8 @@ def main():
         print()
 
     generate_html(shown, digest_path)
-    LAST_RUN_PATH.write_text(json.dumps(shown, ensure_ascii=False, indent=2))
     print(f"Digest written to {digest_path}")
-    print(f"Run saved to {LAST_RUN_PATH} — use voice_agent.py to talk about these listings and tailor your CV.")
+    print("Saved to jobs.db — use voice_agent.py or the dashboard to talk about these listings and tailor your CV.")
 
 
 if __name__ == "__main__":

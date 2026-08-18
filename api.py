@@ -101,7 +101,7 @@ def tailor_cv(source: str, external_id: str):
     suggestions = tailor_for_job(client, cv_text, job)
     if "error" in suggestions:
         raise HTTPException(502, suggestions["error"])
-    save_suggestions(job, suggestions, index=0)
+    save_suggestions(job, suggestions)
     return suggestions
 
 

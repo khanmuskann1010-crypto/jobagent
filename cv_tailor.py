@@ -42,6 +42,7 @@ def load_cv() -> str:
 
 
 def tailor_for_job(client: Groq, cv_text: str, job: dict) -> dict:
+    description = (job.get("description") or "")[:3000]
     user_content = f"""CANDIDATE CV:
 {cv_text}
 
@@ -49,7 +50,7 @@ JOB LISTING:
 Title: {job['title']}
 Company: {job['company']}
 Location: {job['location']}
-Description: {job['description'][:3000]}"""
+Description: {description}"""
 
     try:
         response = client.chat.completions.create(
@@ -72,10 +73,14 @@ Description: {job['description'][:3000]}"""
         return {"error": f"Could not parse model response: {raw_text[:200]}"}
 
 
-def save_suggestions(job: dict, suggestions: dict, index: int) -> Path:
+def save_suggestions(job: dict, suggestions: dict) -> Path:
+    """Writes to a filename keyed on the listing's own (source, id) - unique
+    per listing, unlike a caller-supplied index which can collide across
+    different listings at the same company."""
     OUTPUT_DIR.mkdir(exist_ok=True)
     safe_company = "".join(c if c.isalnum() else "_" for c in job["company"])
-    path = OUTPUT_DIR / f"job_{index}_{safe_company}.md"
+    safe_id = "".join(c if c.isalnum() else "_" for c in str(job.get("id", "unknown")))
+    path = OUTPUT_DIR / f"{job.get('source', 'job')}_{safe_id}_{safe_company}.md"
 
     lines = [f"# Tailored CV notes — {job['title']} @ {job['company']}\n"]
     if "error" in suggestions:

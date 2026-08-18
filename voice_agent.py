@@ -1,10 +1,11 @@
 """
-CLI voice interface for the job search agent. Talks about your most recent
-run (from last_run.json, written by main.py) and can tailor your CV to a
+CLI voice interface for the job search agent. Talks about your full queue
+(every listing ever scored, from jobs.db - the same data and the same
+"job N" numbering the web dashboard uses) and can tailor your CV to a
 specific listing on request.
 
 Say things like:
-  "what's new" / "read the digest"   -> reads today's scored listings aloud
+  "what's new" / "read the digest"   -> reads your queue aloud, highest fit first
   "tell me about job 2"              -> reads full details for listing #2
   "tailor my cv for job 2"           -> tailors your CV to listing #2, speaks
                                          a short summary, writes the full
@@ -21,24 +22,15 @@ No microphone/speakers? Use text mode instead:
 """
 
 import argparse
-import json
 import re
-from pathlib import Path
 
 from dotenv import load_dotenv
 from groq import Groq
 
+import db
 from cv_tailor import load_cv, save_suggestions, tailor_for_job
 
-LAST_RUN_PATH = Path(__file__).parent / "last_run.json"
-
 JOB_NUMBER_RE = re.compile(r"\b(?:job|listing|number)\s*(\d+)\b")
-
-
-def load_last_run() -> list[dict]:
-    if not LAST_RUN_PATH.exists():
-        return []
-    return json.loads(LAST_RUN_PATH.read_text())
 
 
 def parse_command(text: str) -> tuple[str, int | None]:
@@ -72,8 +64,8 @@ def handle_command(
 ) -> str:
     if intent == "digest":
         if not jobs:
-            return "There's nothing in today's digest yet. Run main.py first."
-        lines = [f"You have {len(jobs)} new listings today."]
+            return "Your queue is empty. Run main.py first."
+        lines = [f"You have {len(jobs)} listings in your queue."]
         for i, j in enumerate(jobs, start=1):
             lines.append(f"Job {i}: {j['title']} at {j['company']}, score {j['score']} out of 10.")
         return " ".join(lines)
@@ -82,7 +74,7 @@ def handle_command(
         if job_number is None:
             return "Which job number did you mean?"
         if not (1 <= job_number <= len(jobs)):
-            return f"I only have {len(jobs)} listings today, job {job_number} doesn't exist."
+            return f"I only have {len(jobs)} listings in your queue, job {job_number} doesn't exist."
 
     if intent == "details":
         job = jobs[job_number - 1]
@@ -100,7 +92,7 @@ def handle_command(
         suggestions = tailor_for_job(client, cv_text, job)
         if "error" in suggestions:
             return f"Something went wrong tailoring that one: {suggestions['error']}"
-        path = save_suggestions(job, suggestions, job_number)
+        path = save_suggestions(job, suggestions)
         top = ", ".join(suggestions.get("top_requirements", [])[:3])
         n_bullets = len(suggestions.get("bullet_suggestions", []))
         return (
@@ -136,7 +128,7 @@ def main():
     parser.add_argument("--text", action="store_true", help="Type commands instead of speaking (no mic/speaker needed)")
     args = parser.parse_args()
 
-    jobs = load_last_run()
+    jobs = db.get_all_jobs()
     try:
         client = Groq()
     except Exception:
@@ -158,7 +150,7 @@ def main():
         microphone = sr.Microphone()
 
     speak(
-        f"Hi. You have {len(jobs)} listings from your last run. "
+        f"Hi. You have {len(jobs)} listings in your queue. "
         "Say what's new to hear them, or quit to stop.",
         tts_engine,
     )

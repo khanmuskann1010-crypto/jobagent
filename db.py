@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS seen_jobs (
     title TEXT,
     company TEXT,
     location TEXT,
+    description TEXT,
     contract_type TEXT,
     url TEXT,
     date_posted TEXT,
@@ -35,9 +36,9 @@ CREATE TABLE IF NOT EXISTS seen_jobs (
 """
 
 _COLUMNS = (
-    "source", "external_id", "title", "company", "location", "contract_type",
-    "url", "date_posted", "score", "reason", "first_seen_at", "status",
-    "status_updated_at",
+    "source", "external_id", "title", "company", "location", "description",
+    "contract_type", "url", "date_posted", "score", "reason", "first_seen_at",
+    "status", "status_updated_at",
 )
 
 
@@ -51,12 +52,14 @@ def _row_to_dict(row: tuple) -> dict:
 def connect(db_path: Path = DB_PATH):
     conn = sqlite3.connect(db_path)
     conn.execute(SCHEMA)
-    # Migrate databases created before status tracking was added.
+    # Migrate databases created before status tracking / description storage was added.
     existing_cols = {row[1] for row in conn.execute("PRAGMA table_info(seen_jobs)")}
     if "status" not in existing_cols:
         conn.execute("ALTER TABLE seen_jobs ADD COLUMN status TEXT NOT NULL DEFAULT 'new'")
     if "status_updated_at" not in existing_cols:
         conn.execute("ALTER TABLE seen_jobs ADD COLUMN status_updated_at TEXT")
+    if "description" not in existing_cols:
+        conn.execute("ALTER TABLE seen_jobs ADD COLUMN description TEXT")
     try:
         yield conn
         conn.commit()
@@ -77,14 +80,14 @@ def save_scored(scored_listings: list[dict], db_path: Path = DB_PATH) -> None:
     with connect(db_path) as conn:
         conn.executemany(
             """INSERT OR IGNORE INTO seen_jobs
-               (source, external_id, title, company, location, contract_type,
-                url, date_posted, score, reason, first_seen_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               (source, external_id, title, company, location, description,
+                contract_type, url, date_posted, score, reason, first_seen_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             [
                 (
                     j["source"], j["id"], j["title"], j["company"], j["location"],
-                    j["contract_type"], j["url"], j["date_posted"], j["score"],
-                    j["reason"], now,
+                    j.get("description", ""), j["contract_type"], j["url"],
+                    j["date_posted"], j["score"], j["reason"], now,
                 )
                 for j in scored_listings
             ],

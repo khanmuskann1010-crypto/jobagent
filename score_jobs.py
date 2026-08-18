@@ -75,7 +75,13 @@ Description: {listing['description'][:2000]}"""
 
 def score_all(listings: list[dict]) -> list[dict]:
     """Score a batch of listings, attaching score + reason to each, sorted highest first."""
-    client = Groq()  # reads GROQ_API_KEY from env
+    try:
+        client = Groq()  # reads GROQ_API_KEY from env
+    except Exception as e:
+        raise SystemExit(
+            f"Could not start Groq client: {e}\n"
+            "Check that GROQ_API_KEY is set correctly in your .env file."
+        )
     profile = load_profile()
 
     scored = []
