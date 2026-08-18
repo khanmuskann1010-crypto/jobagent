@@ -677,6 +677,17 @@
     100% { transform: scale(1.6); opacity: 0; }
   }
   .icon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  #stop-speak-btn {
+    background: var(--gold-wash);
+    border-color: var(--gold);
+    color: var(--gold-text);
+    animation: stop-btn-in 0.2s ease both;
+  }
+  #stop-speak-btn:hover { background: var(--gold); color: #201a06; }
+  @keyframes stop-btn-in {
+    from { opacity: 0; transform: scale(0.7); }
+    to { opacity: 1; transform: scale(1); }
+  }
   .chat-hint { font-size: 0.72rem; color: var(--muted); margin-top: 0.55rem; }
 
   /* Best match card */
@@ -940,6 +951,7 @@
       <div class="chat-log" id="chat-log"></div>
       <div class="chat-input-row">
         <button class="icon-btn" id="mic-btn" title="Speak">🎙️</button>
+        <button class="icon-btn hidden" id="stop-speak-btn" title="Stop talking">⏹</button>
         <input id="chat-input" type="text" placeholder="Ask Dextor anything…" autocomplete="off">
         <button class="send-btn" id="send-btn">Send</button>
       </div>
@@ -1346,12 +1358,22 @@ function setOrbState(state) {
   const statusEl = document.getElementById("orb-status");
   statusEl.textContent = meta.status;
   statusEl.style.color = meta.color;
+  document.getElementById("stop-speak-btn").classList.toggle("hidden", state !== "speaking");
 }
 function currentOrbState() {
   return document.getElementById("dextor-orb").className.replace("dextor-orb orb-", "").trim() || "idle";
 }
+function stopSpeaking() {
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+  if (currentOrbState() === "speaking") setOrbState("idle");
+}
+document.getElementById("stop-speak-btn").addEventListener("click", stopSpeaking);
 document.getElementById("dextor-orb").addEventListener("click", () => {
-  document.getElementById("mic-btn").click();
+  if (currentOrbState() === "speaking") {
+    stopSpeaking();
+  } else {
+    document.getElementById("mic-btn").click();
+  }
 });
 
 /* Funnel bars render at 0% then animate to their real width on the next
@@ -1732,10 +1754,55 @@ if (!SpeechRecognitionImpl) {
   });
 }
 
+/* Picks the most natural-sounding voice this browser actually has. Quality
+   varies a lot by platform - Edge's "Microsoft ... Online (Natural)"
+   voices and Chrome's "Google" voices are genuinely good and free; this
+   just makes sure we're not stuck on the default robotic system voice
+   when something better is sitting right there in the same voice list. */
+let preferredVoice = null;
+function pickBestVoice() {
+  const voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+  if (!voices.length) return null;
+  const score = (v) => {
+    let s = 0;
+    if (/^en/i.test(v.lang)) s += 10;
+    if (/^en-US$/i.test(v.lang)) s += 2;
+    if (/natural|neural|premium|enhanced/i.test(v.name)) s += 20;
+    if (/online/i.test(v.name)) s += 10;
+    if (/google/i.test(v.name)) s += 6;
+    if (/microsoft/i.test(v.name)) s += 4;
+    if (/samantha|ava|siri|alex/i.test(v.name)) s += 6;
+    if (v.localService === false) s += 3;
+    return s;
+  };
+  return voices.slice().sort((a, b) => score(b) - score(a))[0];
+}
+function refreshVoiceChoice() { preferredVoice = pickBestVoice(); }
+if (window.speechSynthesis) {
+  refreshVoiceChoice();
+  window.speechSynthesis.onvoiceschanged = refreshVoiceChoice; // voice list often loads async
+}
+
+/* Strip markdown Groq occasionally emits (**bold**, `code`, # headings,
+   bullet dashes) - reading "asterisk asterisk" aloud is the opposite of
+   sounding human. */
+function stripForSpeech(text) {
+  return text
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/\*(.*?)\*/g, "$1")
+    .replace(/`(.*?)`/g, "$1")
+    .replace(/^#{1,6}\s*/gm, "")
+    .replace(/^[-*•]\s+/gm, "")
+    .trim();
+}
+
 function speak(text) {
   if (!window.speechSynthesis) { setOrbState("idle"); return; }
   window.speechSynthesis.cancel();
-  const utter = new SpeechSynthesisUtterance(text);
+  const utter = new SpeechSynthesisUtterance(stripForSpeech(text));
+  if (preferredVoice) utter.voice = preferredVoice;
+  utter.rate = 0.98; // a hair under 1x reads as calmer and more natural than the default
+  utter.pitch = 1.0;
   utter.onend = () => setOrbState("idle");
   utter.onerror = () => setOrbState("idle");
   window.speechSynthesis.speak(utter);
