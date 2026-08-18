@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Job Search Console</title>
+<title>Dextor — Job Search Console</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -30,6 +30,9 @@
     --glow-1: rgba(15, 107, 76, 0.12);
     --glow-2: rgba(201, 162, 39, 0.10);
     --shadow-color: rgba(31, 42, 38, 0.10);
+    --source-france: #3b6ea5;
+    --source-adzuna: #c26a3f;
+    --source-indeed: #7c5cad;
   }
 
   @media (prefers-color-scheme: dark) {
@@ -55,6 +58,9 @@
       --glow-1: rgba(43, 219, 154, 0.28);
       --glow-2: rgba(240, 207, 95, 0.16);
       --shadow-color: rgba(0, 0, 0, 0.45);
+      --source-france: #4a84c4;
+      --source-adzuna: #c97840;
+      --source-indeed: #8f6bc4;
     }
   }
   :root[data-theme="dark"] {
@@ -79,6 +85,9 @@
     --glow-1: rgba(43, 219, 154, 0.28);
     --glow-2: rgba(240, 207, 95, 0.16);
     --shadow-color: rgba(0, 0, 0, 0.45);
+    --source-france: #4a84c4;
+    --source-adzuna: #c97840;
+    --source-indeed: #8f6bc4;
   }
 
   * { box-sizing: border-box; }
@@ -171,6 +180,21 @@
     50% { opacity: 0.6; transform: scale(0.85); }
   }
   .date { font-size: 0.78rem; color: var(--muted); }
+  .theme-toggle {
+    border: 1px solid var(--glass-border);
+    background: var(--surface);
+    color: var(--text);
+    border-radius: 999px;
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.95rem;
+    transition: transform 0.15s ease, border-color 0.2s ease;
+  }
+  .theme-toggle:hover { transform: translateY(-1px) rotate(-8deg); border-color: var(--emerald); }
 
   main {
     flex: 1 1 auto;
@@ -275,7 +299,16 @@
   .empty-state { color: var(--muted); font-size: 0.85rem; padding: 1rem 0; text-align: center; }
 
   /* Progress panel */
-  .progress-panel { flex: 0 0 auto; max-height: 34vh; }
+  .progress-panel { flex: 0 0 auto; max-height: 46vh; }
+  .insights-body { overflow-y: auto; }
+  .mini-chart-head {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0.9rem 0 0.5rem;
+  }
   .funnel { display: flex; flex-direction: column; gap: 0.5rem; }
   .funnel-row { display: flex; align-items: center; gap: 0.6rem; }
   .funnel-label { font-size: 0.74rem; color: var(--muted); width: 84px; flex: 0 0 auto; }
@@ -478,10 +511,11 @@
 <div class="aurora"></div>
 
 <header>
-  <h1>Job Search <span class="accent">Console</span></h1>
+  <h1>Job Search Console — <span class="accent">Dextor</span></h1>
   <div class="header-right">
     <span class="date mono" id="today-date"></span>
     <span class="status-pulse"><span class="dot"></span>live</span>
+    <button class="theme-toggle" id="theme-toggle" title="Switch theme" aria-label="Switch light/dark theme">🌙</button>
   </div>
 </header>
 
@@ -498,23 +532,29 @@
     </div>
     <div class="panel glass progress-panel">
       <div class="panel-head">
-        <span class="eyebrow">Progress</span>
+        <span class="eyebrow">Insights</span>
         <span class="count mono" id="progress-total">—</span>
       </div>
-      <div class="funnel" id="funnel"></div>
+      <div class="insights-body">
+        <div class="funnel" id="funnel"></div>
+        <div class="mini-chart-head">Score distribution</div>
+        <div class="funnel" id="score-dist"></div>
+        <div class="mini-chart-head">By source</div>
+        <div class="funnel" id="source-dist"></div>
+      </div>
     </div>
   </section>
 
   <section class="col-center">
     <div class="chat-panel glass">
       <div class="panel-head">
-        <span class="eyebrow">Chat</span>
+        <span class="eyebrow">Dextor</span>
         <span class="count" id="chat-hint-count">talk or type</span>
       </div>
       <div class="chat-log" id="chat-log"></div>
       <div class="chat-input-row">
         <button class="icon-btn" id="mic-btn" title="Speak">🎙️</button>
-        <input id="chat-input" type="text" placeholder="Ask me anything about your search…" autocomplete="off">
+        <input id="chat-input" type="text" placeholder="Ask Dextor anything…" autocomplete="off">
         <button class="send-btn" id="send-btn">Send</button>
       </div>
       <div class="chat-hint">Click the mic to talk — I'll only speak back when you do. Otherwise, just type.</div>
@@ -548,6 +588,27 @@ let chatHistory = []; // [{role: "user"|"assistant", content: string}]
 const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 const $ = (sel) => document.querySelector(sel);
+
+/* Theme toggle: explicit choice overrides the OS setting, persisted locally */
+const systemPrefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+function applyTheme(theme) {
+  // theme is "light", "dark", or null (follow system)
+  if (theme) {
+    document.documentElement.setAttribute("data-theme", theme);
+  } else {
+    document.documentElement.removeAttribute("data-theme");
+  }
+  const effectiveDark = theme ? theme === "dark" : systemPrefersDark;
+  document.getElementById("theme-toggle").textContent = effectiveDark ? "☀️" : "🌙";
+}
+const savedTheme = localStorage.getItem("dextor-theme");
+applyTheme(savedTheme);
+document.getElementById("theme-toggle").addEventListener("click", () => {
+  const current = localStorage.getItem("dextor-theme") || (systemPrefersDark ? "dark" : "light");
+  const next = current === "dark" ? "light" : "dark";
+  localStorage.setItem("dextor-theme", next);
+  applyTheme(next);
+});
 
 document.getElementById("today-date").textContent = new Date().toLocaleDateString(undefined, {
   weekday: "long", year: "numeric", month: "long", day: "numeric"
@@ -687,6 +748,64 @@ function renderProgress(stats) {
   }).join("");
 }
 
+const SCORE_TIERS = [
+  { label: "Strong", tooltip: "Strong (8-10)", cls: "", min: 8, max: 10 },
+  { label: "Worth a look", tooltip: "Worth a look (5-7)", cls: "gold", min: 5, max: 7 },
+  { label: "Low", tooltip: "Low (0-4)", cls: "danger", min: 0, max: 4 },
+];
+
+function renderScoreDistribution(jobList) {
+  const total = jobList.length;
+  const max = Math.max(1, total);
+  const html = SCORE_TIERS.map(t => {
+    const count = jobList.filter(j => j.score >= t.min && j.score <= t.max).length;
+    const pct = Math.round((count / max) * 100);
+    return `
+      <div class="funnel-row" title="${t.tooltip}: ${count} of ${total} jobs">
+        <span class="funnel-label">${t.label}</span>
+        <span class="funnel-track"><span class="funnel-fill ${t.cls}" style="width:${pct}%"></span></span>
+        <span class="funnel-count mono">${count}</span>
+      </div>
+    `;
+  }).join("");
+  document.getElementById("score-dist").innerHTML = html;
+}
+
+const SOURCE_LABELS = {
+  france_travail: "France Travail",
+  adzuna: "Adzuna",
+  indeed: "Indeed",
+};
+const SOURCE_COLORS = {
+  france_travail: "var(--source-france)",
+  adzuna: "var(--source-adzuna)",
+  indeed: "var(--source-indeed)",
+};
+
+function renderSourceBreakdown(jobList) {
+  const total = jobList.length;
+  const max = Math.max(1, total);
+  const counts = {};
+  for (const j of jobList) {
+    counts[j.source] = (counts[j.source] || 0) + 1;
+  }
+  const sources = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+  const html = sources.map(src => {
+    const count = counts[src];
+    const pct = Math.round((count / max) * 100);
+    const label = SOURCE_LABELS[src] || src;
+    const color = SOURCE_COLORS[src] || "var(--muted)";
+    return `
+      <div class="funnel-row" title="${label}: ${count} of ${total} jobs">
+        <span class="funnel-label">${label}</span>
+        <span class="funnel-track"><span class="funnel-fill" style="width:${pct}%;background:${color}"></span></span>
+        <span class="funnel-count mono">${count}</span>
+      </div>
+    `;
+  }).join("");
+  document.getElementById("source-dist").innerHTML = html;
+}
+
 async function setStatus(job, status) {
   await api(`/api/jobs/${job.source}/${job.id}/status`, {
     method: "PATCH",
@@ -708,6 +827,8 @@ async function refreshAll() {
   renderBestMatch(bestRes);
   renderApplied(appliedRes);
   renderProgress(progressRes);
+  renderScoreDistribution(jobs);
+  renderSourceBreakdown(jobs);
 }
 
 /* Chat */
@@ -814,7 +935,7 @@ function speak(text) {
 }
 
 /* Boot */
-appendMessage("agent", "Hey! I'm your job search assistant — ask me anything: what's new, how a specific listing looks, whether you should apply, or just talk through your search with me. Click the mic if you'd rather talk.");
+appendMessage("agent", "Hey, I'm Dextor — ask me anything: what's new, how a specific listing looks, whether you should apply, or just talk through your search with me. Click the mic if you'd rather talk.");
 refreshAll().catch((e) => appendMessage("agent", `Couldn't load your data: ${e.message}`));
 </script>
 </body>
