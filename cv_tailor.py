@@ -45,7 +45,7 @@ text, no markdown fences, in the SAME LANGUAGE as the original CV:
   "contact": "<contact line - phone, email, location, links - copied EXACTLY from the CV>",
   "headline": "<a professional headline for this specific role, in the candidate's own style>",
   "summary": "<3-4 sentence professional summary, tailored to emphasize fit for THIS job>",
-  "skills": ["<skill>", ...],
+  "skills": ["<skill>", ...],  // at most 10, the most relevant to this job
   "experience": [
     {
       "title": "<EXACT role title from the CV, unchanged>",
@@ -68,8 +68,10 @@ you may rephrase and re-emphasize what's already there, never add new claims.
 EXACTLY as they appear in the original CV, character for character.
 - Every role in the original CV must appear in "experience", in the same order \
 - do not drop or merge any.
-- "skills" must only contain skills that already appear in the original CV \
-(reordered/filtered to emphasize what's most relevant to this job)."""
+- "skills" must only contain skills that already appear in the original CV, \
+capped at 10, chosen for relevance to this job - not a copy of every skill listed.
+- Keep bullets per role to 2-4, and each bullet to one sentence. Be concise - \
+this is a one-page CV, not an essay."""
 
 
 def load_cv() -> str:
@@ -80,7 +82,7 @@ def load_cv() -> str:
     return CV_PATH.read_text()
 
 
-def tailor_for_job(client: Groq, cv_text: str, job: dict) -> dict:
+def tailor_for_job(client: Groq, cv_text: str, job: dict, attempts: int = 2) -> dict:
     description = (job.get("description") or "")[:3000]
     user_content = f"""CANDIDATE CV:
 {cv_text}
@@ -91,25 +93,35 @@ Company: {job['company']}
 Location: {job['location']}
 Description: {description}"""
 
-    try:
-        response = client.chat.completions.create(
-            model=MODEL,
-            max_tokens=3500,
-            reasoning_effort="low",
-            response_format={"type": "json_object"},
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": user_content},
-            ],
-        )
-        raw_text = response.choices[0].message.content.strip()
-    except Exception as e:
-        return {"error": f"Tailoring request failed: {e}"}
+    last_error = "unknown error"
+    for _ in range(attempts):
+        try:
+            response = client.chat.completions.create(
+                model=MODEL,
+                max_tokens=8000,
+                reasoning_effort="low",
+                response_format={"type": "json_object"},
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": user_content},
+                ],
+            )
+            raw_text = response.choices[0].message.content.strip()
+        except Exception as e:
+            # A full CV response is long enough that the model occasionally
+            # runs out of budget mid-JSON (even with generous max_tokens) and
+            # Groq rejects the incomplete output outright - worth one retry
+            # before giving up, since it's an independent roll of the dice.
+            last_error = f"Tailoring request failed: {e}"
+            continue
 
-    try:
-        return json.loads(raw_text)
-    except json.JSONDecodeError:
-        return {"error": f"Could not parse model response: {raw_text[:200]}"}
+        try:
+            return json.loads(raw_text)
+        except json.JSONDecodeError:
+            last_error = f"Could not parse model response: {raw_text[:200]}"
+            continue
+
+    return {"error": last_error}
 
 
 def save_tailored_cv(job: dict, cv_data: dict) -> Path:
