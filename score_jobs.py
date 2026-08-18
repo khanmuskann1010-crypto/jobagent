@@ -11,6 +11,8 @@ from pathlib import Path
 
 from groq import Groq
 
+import groq_usage
+
 PROFILE_PATH = Path(__file__).parent / "profile.md"
 MODEL = "openai/gpt-oss-120b"
 
@@ -58,10 +60,12 @@ Description: {listing['description'][:2000]}"""
             ],
         )
         raw_text = response.choices[0].message.content.strip()
+        groq_usage.record_usage(response)
     except Exception as e:
         # gpt-oss-120b occasionally burns its whole token budget on hidden
         # reasoning and returns nothing, which Groq rejects outright - don't
         # let one bad listing take down the rest of the batch
+        groq_usage.record_limit_hit(e)
         return {"score": 0, "reason": f"Scoring failed for this listing: {e}"}
 
     try:

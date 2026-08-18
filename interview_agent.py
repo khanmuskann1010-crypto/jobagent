@@ -8,6 +8,7 @@ real CV so questions feel specific rather than generic.
 
 from groq import Groq
 
+import groq_usage
 from groq_errors import friendly_groq_error
 
 MODEL = "openai/gpt-oss-120b"
@@ -62,6 +63,8 @@ def interview_turn(client: Groq | None, history: list[dict], cv_text: str | None
             max_tokens=500,
             reasoning_effort="low",
         )
+        groq_usage.record_usage(response)
         return response.choices[0].message.content or "..."
     except Exception as e:
+        groq_usage.record_limit_hit(e)
         return friendly_groq_error(e)

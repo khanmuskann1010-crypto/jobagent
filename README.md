@@ -182,6 +182,21 @@ The 🎯 icon in the header hides everything but the job queue and chat
 countdown. The same icon exits it - leaving before 30 minutes asks you to
 confirm, but never locks you in.
 
+### Groq usage
+
+The 📊 icon in the chat panel toggles today's Groq token usage - useful
+since the free tier's daily cap (200k tokens for `openai/gpt-oss-120b`,
+shared across scoring/chat/CV tailoring/cover letters/interviews) is easy
+to run into without warning. Groq's rate-limit response headers only
+cover the per-minute window, and there's no API to query the daily quota
+directly, so `groq_usage.py` tracks it locally from two sources: every
+successful call's real token count, resynced whenever a 429 daily-limit
+error hands back Groq's own exact numbers. This is usage tracked **by
+this app**, not Groq's live dashboard - close enough to know if you're
+near the limit, not a billing record (see
+[console.groq.com/settings/billing](https://console.groq.com/settings/billing)
+for that).
+
 Other conveniences: a full screen toggle and an opt-in desktop-notification
 bell for strong (8+/10) new matches, both top right; a slim alert banner
 under the header when an application could use a follow-up or you have an
@@ -244,6 +259,7 @@ identify a listing (e.g. `indeed`/`JOBSEARCH_145`).
 | GET | `/api/applied` | Jobs with status applied/interviewing/rejected |
 | GET | `/api/best-match` | Highest-scoring job still at status `new` |
 | GET | `/api/progress` | `{total_scored, by_status: {...}}` counts for the funnel |
+| GET | `/api/groq-usage` | `{date, used, limit, remaining, pct}` - today's Groq token usage, tracked by this app (see below) |
 | POST | `/api/jobs/{source}/{external_id}/tailor-cv` | Runs `cv_tailor.py` against this listing, returns the suggestions |
 | POST | `/api/jobs/{source}/{external_id}/cover-letter` | Runs `cover_letter.py` against this listing, returns the letter |
 | POST | `/api/jobs/{source}/{external_id}/apply-kit` | Tailored CV + cover letter together, returns `{downloads: [{label, url}, ...]}` |
@@ -309,6 +325,8 @@ job-search-agent/
 ├── chat_agent.py          # tool-using conversational agent for the dashboard chat
 ├── interview_agent.py     # mock-interview conversation loop (growth marketing)
 ├── rejection_insights.py  # pattern analysis across rejected applications
+├── groq_errors.py         # turns raw Groq API errors into plain-language messages
+├── groq_usage.py          # local daily token-usage tracker for the usage toggle
 ├── gmail_agent.py         # Gmail OAuth + inbox fetch/importance-tagging for the Inbox panel
 ├── frontend/index.html   # dashboard frontend
 └── main.py              # orchestrator — run this

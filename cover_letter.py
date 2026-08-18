@@ -11,6 +11,7 @@ from pathlib import Path
 from fpdf import FPDF, XPos, YPos
 from groq import Groq
 
+import groq_usage
 from cv_tailor import OUTPUT_DIR, _pdf_safe
 from groq_errors import friendly_groq_error
 
@@ -72,7 +73,9 @@ Description: {description}"""
                 ],
             )
             raw_text = response.choices[0].message.content.strip()
+            groq_usage.record_usage(response)
         except Exception as e:
+            groq_usage.record_limit_hit(e)
             last_error = friendly_groq_error(e)
             continue
 

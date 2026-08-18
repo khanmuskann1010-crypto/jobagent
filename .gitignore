@@ -9,6 +9,7 @@ cv_suggestions/
 indeed_raw.json
 gmail_credentials.json
 gmail_token.json
+groq_usage.json
 
 # jobs.db IS committed (not ignored): the daily cloud Routine runs in a
 # fresh session each time with no persistent local disk, so dedup history

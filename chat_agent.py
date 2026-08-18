@@ -15,6 +15,7 @@ from datetime import date
 from groq import Groq
 
 import db
+import groq_usage
 import rejection_insights
 from groq_errors import friendly_groq_error
 from cover_letter import generate_cover_letter, save_cover_letter
@@ -404,9 +405,11 @@ def chat(
                     max_tokens=1200,
                     reasoning_effort="low",
                 )
+                groq_usage.record_usage(response)
                 break
             except Exception as e:
                 last_error = e
+                groq_usage.record_limit_hit(e)
         if response is None:
             return friendly_groq_error(last_error), downloads
 

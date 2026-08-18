@@ -24,6 +24,7 @@ from pydantic import BaseModel
 
 import chat_agent
 import db
+import groq_usage
 import interview_agent
 import rejection_insights
 from groq import Groq
@@ -117,6 +118,13 @@ def best_match():
 @app.get("/api/progress")
 def progress():
     return db.get_progress_stats()
+
+
+@app.get("/api/groq-usage")
+def groq_usage_endpoint():
+    """Tokens used today, tracked by this app from Groq's own response data
+    (Groq doesn't expose a daily-quota API) - see groq_usage.py."""
+    return groq_usage.get_usage()
 
 
 @app.get("/api/progress/trend")

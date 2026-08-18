@@ -691,6 +691,12 @@
   }
   .chat-hint { font-size: 0.72rem; color: var(--muted); margin-top: 0.55rem; }
 
+  .usage-panel { flex: 0 0 auto; margin-bottom: 0.7rem; animation: tab-in 0.2s ease both; }
+  .usage-panel.hidden { display: none; }
+  .usage-row { display: flex; justify-content: space-between; margin-bottom: 0.35rem; font-size: 0.74rem; color: var(--muted); }
+  .usage-panel .funnel-track { display: block; width: 100%; }
+  .refresh-btn.active { color: var(--emerald); }
+
   /* Best match card */
   .best-match-card {
     background: linear-gradient(165deg, var(--emerald-wash), transparent 65%), var(--surface);
@@ -1044,7 +1050,16 @@
     <div class="chat-panel glass">
       <div class="panel-head">
         <span class="eyebrow">Dextor</span>
-        <span class="count" id="chat-hint-count">talk or type</span>
+        <div class="inbox-head-actions">
+          <button class="refresh-btn" id="usage-toggle" title="Show today's Groq usage" aria-label="Toggle Groq usage">📊</button>
+          <span class="count" id="chat-hint-count">talk or type</span>
+        </div>
+      </div>
+      <div class="usage-panel hidden" id="usage-panel">
+        <div class="usage-row">
+          <span id="usage-label">Loading…</span>
+        </div>
+        <span class="funnel-track"><span class="funnel-fill" id="usage-fill" style="width:0%"></span></span>
       </div>
       <div class="chat-log" id="chat-log"></div>
       <div class="chat-input-row">
@@ -1645,6 +1660,33 @@ document.getElementById("focus-toggle").addEventListener("click", () => {
   exitFocusMode();
 });
 
+/* Groq usage toggle - tracked locally by the app from Groq's own response
+   data (see groq_usage.py), since Groq's rate-limit headers only cover
+   the per-minute window and there's no API to query the daily quota
+   directly. Close, not authoritative - Groq's own dashboard is the source
+   of truth if this ever looks off. */
+let usagePanelOpen = false;
+async function loadUsage() {
+  try {
+    const usage = await api("/api/groq-usage");
+    document.getElementById("usage-label").textContent =
+      `Groq usage today: ${usage.used.toLocaleString()} / ${usage.limit.toLocaleString()} tokens (${usage.pct}%)`;
+    const fill = document.getElementById("usage-fill");
+    fill.className = usage.pct >= 90 ? "funnel-fill danger" : usage.pct >= 70 ? "funnel-fill gold" : "funnel-fill";
+    fill.style.width = "0%";
+    void fill.parentElement.offsetHeight;
+    fill.style.width = `${Math.min(100, usage.pct)}%`;
+  } catch (e) {
+    document.getElementById("usage-label").textContent = `Couldn't load usage: ${e.message}`;
+  }
+}
+document.getElementById("usage-toggle").addEventListener("click", () => {
+  usagePanelOpen = !usagePanelOpen;
+  document.getElementById("usage-panel").classList.toggle("hidden", !usagePanelOpen);
+  document.getElementById("usage-toggle").classList.toggle("active", usagePanelOpen);
+  if (usagePanelOpen) loadUsage();
+});
+
 /* Funnel bars render at 0% then animate to their real width on the next
    frame, so every refresh reads as the bars growing in rather than just
    appearing - reused by the progress funnel and both mini charts below. */
@@ -1909,6 +1951,7 @@ async function refreshAll() {
   renderCalendar();
   renderAlertBanner();
   checkForNewStrongMatches(jobs);
+  if (usagePanelOpen) loadUsage();
 }
 
 /* Chat */

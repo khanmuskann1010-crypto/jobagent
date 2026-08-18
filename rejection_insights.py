@@ -10,6 +10,7 @@ import json
 
 from groq import Groq
 
+import groq_usage
 from groq_errors import friendly_groq_error
 
 MODEL = "openai/gpt-oss-120b"
@@ -57,6 +58,8 @@ def analyze_rejections(client: Groq | None, rejected_jobs: list[dict]) -> dict:
                 {"role": "user", "content": json.dumps(slim, ensure_ascii=False)},
             ],
         )
+        groq_usage.record_usage(response)
         return json.loads(response.choices[0].message.content)
     except Exception as e:
+        groq_usage.record_limit_hit(e)
         return {"error": friendly_groq_error(e)}
