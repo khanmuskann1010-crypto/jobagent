@@ -134,15 +134,19 @@ Same commands, typed instead of spoken, printed instead of read aloud.
 ## Dashboard
 
 A local web app (FastAPI backend + a single-page frontend) with the job
-queue, a chat/voice panel, an applied-jobs tracker, and a progress view —
-built around three columns:
+queue, a real conversational assistant, an applied-jobs tracker, and a
+progress view — built around three columns:
 
 - **Left** — the job queue (all scored listings, highest fit first) over
   a progress funnel (new → applied → interviewing → rejected)
-- **Center** — chat, typed or spoken (your browser's built-in speech
-  recognition/synthesis — Chrome or Edge — no extra install or paid API).
-  Same commands as `voice_agent.py`: "what's new", "tell me about job 2",
-  "tailor my cv for job 2". Clicking a job in the queue asks about it directly.
+- **Center** — a genuine conversational agent (`chat_agent.py`), not a fixed
+  command parser. Ask it anything about your search - it decides for itself
+  when to look up a job, pull full details, tailor your CV, mark something
+  applied, or check progress, via tool calls, the same way an LLM agent
+  works. Typed or spoken (your browser's built-in speech recognition -
+  Safari or Chrome - no extra install or paid API); it only speaks a reply
+  back when you used the mic, never for typed messages. Clicking a job in
+  the queue asks about it directly.
 - **Right** — your best current match (highest-scoring listing you haven't
   acted on) with a "Mark applied" button, over the applied-jobs tracker
 
@@ -215,6 +219,7 @@ job-search-agent/
 ├── cv_tailor.py          # LLM CV-tailoring logic (Groq by default)
 ├── voice_agent.py        # CLI voice interface
 ├── api.py                # dashboard backend (FastAPI)
+├── chat_agent.py          # tool-using conversational agent for the dashboard chat
 ├── frontend/index.html   # dashboard frontend
 └── main.py              # orchestrator — run this
 ```

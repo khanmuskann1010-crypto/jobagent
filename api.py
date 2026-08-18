@@ -19,11 +19,11 @@ from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+import chat_agent
 import db
 from groq import Groq
 from cv_tailor import OUTPUT_DIR as CV_SUGGESTIONS_DIR
 from cv_tailor import load_cv, save_tailored_cv, tailor_for_job
-from voice_agent import handle_command, parse_command
 
 load_dotenv()
 CV_SUGGESTIONS_DIR.mkdir(exist_ok=True)  # StaticFiles needs the dir to exist at mount time
@@ -37,6 +37,7 @@ class StatusUpdate(BaseModel):
 
 class ChatMessage(BaseModel):
     message: str
+    history: list[dict] = []
 
 
 def _sorted_jobs() -> list[dict]:
@@ -111,11 +112,11 @@ def tailor_cv(source: str, external_id: str):
 
 @app.post("/api/chat")
 def chat(body: ChatMessage):
-    """Powers the dashboard's chat/voice panel. Reuses the same command
-    parsing and handling as voice_agent.py's CLI, so "tell me about job 2"
-    means the same thing whether typed, spoken to the CLI, or spoken here."""
+    """Powers the dashboard's chat/voice panel with a real tool-using LLM
+    agent (chat_agent.py) - free-form conversation, not fixed phrases. The
+    frontend sends the prior turns as `history` so follow-ups ("tailor it
+    for me") resolve correctly."""
     jobs = _sorted_jobs()
-    intent, job_number = parse_command(body.message)
 
     try:
         cv_text = load_cv()
@@ -126,9 +127,10 @@ def chat(body: ChatMessage):
         client = Groq()
     except Exception:
         client = None
-    reply, download_filename = handle_command(intent, job_number, jobs, client, cv_text)
-    download_url = f"/cv-notes/{download_filename}" if download_filename else None
-    return {"reply": reply, "intent": intent, "job_number": job_number, "download_url": download_url}
+
+    history = body.history + [{"role": "user", "content": body.message}]
+    reply, download_url = chat_agent.chat(client, history, jobs, cv_text)
+    return {"reply": reply, "download_url": download_url}
 
 
 app.mount("/cv-notes", StaticFiles(directory=str(CV_SUGGESTIONS_DIR)), name="cv-notes")
