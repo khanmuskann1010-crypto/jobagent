@@ -66,6 +66,7 @@
     outline: 2px solid var(--focus);
     outline-offset: 2px;
   }
+  .hidden { display: none !important; }
   @media (prefers-reduced-motion: reduce) {
     * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
   }
@@ -113,8 +114,8 @@
     background-clip: text;
     color: transparent;
   }
-  .header-right { display: flex; align-items: center; gap: 1rem; }
-  .status-pulse { display: flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; color: var(--muted); }
+  .header-right { display: flex; align-items: center; gap: 0.7rem; }
+  .status-pulse { display: flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; color: var(--muted); margin-right: 0.4rem; }
   .dot {
     width: 7px; height: 7px; border-radius: 50%;
     background: var(--emerald);
@@ -125,7 +126,7 @@
     0%, 100% { opacity: 1; transform: scale(1); }
     50% { opacity: 0.6; transform: scale(0.85); }
   }
-  .date { font-size: 0.78rem; color: var(--muted); }
+  .date { font-size: 0.78rem; color: var(--muted); margin-right: 0.4rem; }
   .icon-btn {
     border: 1px solid var(--glass-border);
     background: var(--surface);
@@ -141,6 +142,19 @@
     transition: transform 0.15s ease, border-color 0.2s ease;
   }
   .icon-btn:hover { transform: translateY(-1px) rotate(-8deg); border-color: var(--emerald); }
+  .icon-btn.active { border-color: var(--emerald); background: var(--emerald-wash); }
+
+  /* Alert banner - follow-up nudges + today's interviews */
+  .alert-banner {
+    flex: 0 0 auto;
+    padding: 0.55rem 1.75rem;
+    background: linear-gradient(90deg, var(--gold-wash), transparent);
+    border-bottom: 1px solid var(--glass-border);
+    font-size: 0.8rem;
+    color: var(--gold-text);
+    position: relative;
+    z-index: 1;
+  }
 
   .toast-root {
     position: fixed;
@@ -190,8 +204,8 @@
     min-height: 0;
     gap: 1.1rem;
   }
-  .col-left { grid-template-rows: minmax(0, 1fr) auto auto; }
-  .col-right { grid-template-rows: auto minmax(0, 1fr) auto; }
+  .col-left { grid-template-rows: minmax(0, 1fr) auto; }
+  .col-right { grid-template-rows: auto auto minmax(0, 1fr); }
 
   .glass {
     background: var(--glass-bg);
@@ -204,7 +218,6 @@
   }
   .col-left .panel:nth-child(1) { animation-delay: 0.02s; }
   .col-left .panel:nth-child(2) { animation-delay: 0.08s; }
-  .col-left .panel:nth-child(3) { animation-delay: 0.14s; }
   .col-center .chat-panel { animation-delay: 0.06s; }
   .col-right .panel:nth-child(1) { animation-delay: 0.10s; }
   .col-right .panel:nth-child(2) { animation-delay: 0.16s; }
@@ -278,6 +291,7 @@
   .job-card .source-tag { font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
   .job-card h3 { margin: 0 0 0.2rem; font-size: 0.88rem; line-height: 1.3; font-weight: 600; font-family: 'Inter', sans-serif; }
   .job-card .meta { margin: 0; font-size: 0.76rem; color: var(--muted); }
+  .job-card .meta.salary { margin-top: 0.15rem; color: var(--emerald-dark); }
   .status-badge {
     font-size: 0.63rem;
     font-weight: 700;
@@ -293,10 +307,29 @@
 
   .empty-state { color: var(--muted); font-size: 0.85rem; padding: 1rem 0; text-align: center; }
 
-  /* Progress panel */
-  .progress-panel { flex: 0 0 auto; max-height: 30vh; }
-  .insights-body { overflow-y: auto; }
-  .linkedin-panel { flex: 0 0 auto; }
+  /* Extras panel: tabbed Insights / LinkedIn / Inbox, so three supplementary
+     views share one footprint instead of stacking three full panels */
+  .extras-panel { flex: 0 0 auto; max-height: 46vh; }
+  .tabs { display: flex; gap: 0.3rem; flex: 0 0 auto; margin-bottom: 0.7rem; }
+  .tab-btn {
+    border: 1px solid transparent;
+    background: none;
+    color: var(--muted);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 0.35rem 0.65rem;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: color 0.15s ease, background 0.15s ease;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { color: var(--emerald); background: var(--emerald-wash); }
+  .tab-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
   .linkedin-links { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.7rem; }
   .notes-area {
     width: 100%;
@@ -317,9 +350,6 @@
   .notes-saved { font-size: 0.68rem; color: var(--emerald); height: 1em; margin-top: 0.3rem; opacity: 0; transition: opacity 0.3s ease; }
   .notes-saved.visible { opacity: 1; }
 
-  .applied-panel { flex: 0 0 auto; max-height: 26vh; }
-
-  .inbox-panel { min-height: 0; }
   .inbox-head-actions { display: flex; align-items: center; gap: 0.5rem; }
   .refresh-btn {
     border: none;
@@ -331,6 +361,8 @@
     border-radius: 6px;
     transition: transform 0.4s ease, color 0.2s ease;
     line-height: 1;
+    text-decoration: none;
+    display: inline-flex;
   }
   .refresh-btn:hover { color: var(--emerald); }
   .refresh-btn.spinning { animation: spin 0.8s linear; }
@@ -342,7 +374,6 @@
   .email-row:last-child { border-bottom: none; }
   .email-row-top { display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.15rem; }
   .email-from { font-size: 0.72rem; color: var(--muted); flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .email-date { font-size: 0.68rem; color: var(--muted); flex: 0 0 auto; }
   .email-subject { font-size: 0.84rem; font-weight: 500; margin: 0 0 0.15rem; }
   .email-row.unread .email-subject { font-weight: 700; }
   .email-snippet { font-size: 0.76rem; color: var(--muted); margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -358,6 +389,7 @@
   .email-tag.important { background: var(--emerald-wash); color: var(--emerald); }
   .gmail-connect { text-align: center; padding: 1rem 0.5rem; }
   .gmail-connect p { color: var(--muted); font-size: 0.8rem; margin: 0 0 0.8rem; }
+
   .mini-chart-head {
     font-size: 0.68rem;
     font-weight: 700;
@@ -366,6 +398,7 @@
     color: var(--muted);
     margin: 0.9rem 0 0.5rem;
   }
+  .mini-chart-head:first-child { margin-top: 0; }
   .funnel { display: flex; flex-direction: column; gap: 0.5rem; }
   .funnel-row { display: flex; align-items: center; gap: 0.6rem; }
   .funnel-label { font-size: 0.74rem; color: var(--muted); width: 84px; flex: 0 0 auto; }
@@ -374,6 +407,12 @@
   .funnel-fill.gold { background: linear-gradient(90deg, var(--gold-text), var(--gold)); }
   .funnel-fill.danger { background: linear-gradient(90deg, var(--danger), var(--danger)); }
   .funnel-count { font-size: 0.78rem; width: 24px; text-align: right; flex: 0 0 auto; }
+
+  /* Trend chart - single SVG line chart, one axis, legend never color-alone */
+  .trend-svg { width: 100%; height: 90px; display: block; }
+  .trend-legend { display: flex; gap: 0.9rem; margin-top: 0.4rem; flex-wrap: wrap; }
+  .trend-legend-item { font-size: 0.7rem; color: var(--muted); display: inline-flex; align-items: center; gap: 0.3rem; }
+  .trend-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
 
   /* Chat column */
   .col-center { display: flex; flex-direction: column; min-height: 0; }
@@ -521,8 +560,9 @@
   }
   .best-match-card h3 { margin: 0.35rem 0 0.15rem; font-size: 0.98rem; position: relative; }
   .best-match-card .meta { margin: 0 0 0.55rem; font-size: 0.78rem; color: var(--muted); position: relative; }
+  .best-match-card .meta.salary { color: var(--emerald-dark); }
   .best-match-card .reason { font-size: 0.83rem; margin: 0 0 0.75rem; position: relative; }
-  .best-match-actions { display: flex; gap: 0.5rem; position: relative; }
+  .best-match-actions { display: flex; gap: 0.5rem; position: relative; flex-wrap: wrap; }
   .pill-btn {
     font-size: 0.76rem;
     font-weight: 600;
@@ -545,11 +585,40 @@
     box-shadow: 0 4px 14px var(--emerald-wash);
   }
 
+  /* Calendar panel */
+  .calendar-panel { flex: 0 0 auto; }
+  .cal-nav { display: flex; align-items: center; gap: 0.5rem; }
+  .cal-nav-btn {
+    border: none; background: none; color: var(--muted); cursor: pointer;
+    font-size: 0.95rem; padding: 0 0.2rem; line-height: 1;
+  }
+  .cal-nav-btn:hover { color: var(--emerald); }
+  .cal-month-label { font-size: 0.75rem; color: var(--muted); min-width: 88px; text-align: center; display: inline-block; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; margin-bottom: 0.7rem; }
+  .cal-dow { font-size: 0.62rem; color: var(--muted); text-align: center; padding-bottom: 0.2rem; }
+  .cal-cell {
+    aspect-ratio: 1;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.7rem; border-radius: 6px; color: var(--text);
+    position: relative;
+  }
+  .cal-cell.empty { visibility: hidden; }
+  .cal-cell.today { border: 1px solid var(--emerald); font-weight: 700; }
+  .cal-cell.has-interview { background: var(--emerald-wash); color: var(--emerald); font-weight: 700; }
+  .upcoming-row {
+    display: flex; flex-direction: column; gap: 0.1rem;
+    padding: 0.4rem 0; border-bottom: 1px solid var(--border); font-size: 0.78rem;
+  }
+  .upcoming-row:last-child { border-bottom: none; }
+  .upcoming-when { color: var(--emerald); font-size: 0.7rem; }
+  .upcoming-what { color: var(--text); }
+
   /* Applied panel */
+  .applied-panel { flex: 0 0 auto; max-height: 26vh; }
   .applied-row {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     padding: 0.55rem 0;
     border-bottom: 1px solid var(--border);
     font-size: 0.82rem;
@@ -558,6 +627,28 @@
   .applied-row:last-child { border-bottom: none; }
   .applied-row .title { font-weight: 600; }
   .applied-row .company { color: var(--muted); font-size: 0.76rem; }
+  .applied-row .interview-tag { color: var(--emerald); font-size: 0.7rem; margin-top: 0.2rem; }
+  .applied-row-actions { display: flex; align-items: center; gap: 0.4rem; flex: 0 0 auto; }
+  .cal-set-btn {
+    border: none; background: none; color: var(--muted); cursor: pointer;
+    font-size: 0.85rem; padding: 0.1rem; line-height: 1;
+  }
+  .cal-set-btn:hover { color: var(--emerald); }
+  .interview-edit { display: flex; align-items: center; gap: 0.3rem; }
+  .interview-input {
+    font-size: 0.72rem;
+    padding: 0.2rem 0.3rem;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    color-scheme: dark;
+  }
+  .mini-btn {
+    border: none; background: var(--surface); color: var(--text); cursor: pointer;
+    width: 22px; height: 22px; border-radius: 6px; font-size: 0.72rem;
+  }
+  .mini-btn:hover { color: var(--emerald); }
 
   ::-webkit-scrollbar { width: 8px; }
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
@@ -573,9 +664,14 @@
   <div class="header-right">
     <span class="date mono" id="today-date"></span>
     <span class="status-pulse"><span class="dot"></span>live</span>
+    <button class="icon-btn" id="notify-toggle" title="Enable desktop notifications for strong new matches" aria-label="Toggle notifications">🔕</button>
     <button class="icon-btn" id="fullscreen-toggle" title="Toggle full screen" aria-label="Toggle full screen">⛶</button>
   </div>
 </header>
+
+<div class="alert-banner hidden" id="alert-banner">
+  <span id="alert-banner-text"></span>
+</div>
 
 <main>
   <section class="col col-left">
@@ -584,35 +680,48 @@
         <span class="eyebrow">Queue</span>
         <span class="count mono" id="queue-count">— jobs</span>
       </div>
-      <input type="search" class="job-search" id="job-search" placeholder="Filter by title, company, location…">
+      <input type="search" class="job-search" id="job-search" placeholder="Filter by title, company, location, salary…">
       <div class="panel-body" id="job-list">
         <div class="empty-state">Loading…</div>
       </div>
     </div>
-    <div class="panel glass progress-panel">
-      <div class="panel-head">
-        <span class="eyebrow">Insights</span>
-        <span class="count mono" id="progress-total">—</span>
+
+    <div class="panel glass extras-panel">
+      <div class="tabs" id="extras-tabs">
+        <button class="tab-btn active" data-tab="insights">Insights</button>
+        <button class="tab-btn" data-tab="linkedin">LinkedIn</button>
+        <button class="tab-btn" data-tab="inbox">Inbox</button>
       </div>
-      <div class="insights-body">
-        <div class="funnel" id="funnel"></div>
-        <div class="mini-chart-head">Score distribution</div>
-        <div class="funnel" id="score-dist"></div>
-        <div class="mini-chart-head">By source</div>
-        <div class="funnel" id="source-dist"></div>
+      <div class="tab-body">
+        <div class="tab-panel active" id="tab-insights">
+          <div class="mini-chart-head">Pipeline · <span class="count mono" id="progress-total">—</span></div>
+          <div class="funnel" id="funnel"></div>
+          <div class="mini-chart-head">Score distribution</div>
+          <div class="funnel" id="score-dist"></div>
+          <div class="mini-chart-head">By source</div>
+          <div class="funnel" id="source-dist"></div>
+          <div class="mini-chart-head">Applications over time</div>
+          <div id="trend-chart"><div class="empty-state">No trend data yet.</div></div>
+        </div>
+        <div class="tab-panel" id="tab-linkedin">
+          <div class="linkedin-links">
+            <a class="pill-btn" href="https://www.linkedin.com/in/me/" target="_blank" rel="noopener">My profile</a>
+            <a class="pill-btn" href="https://www.linkedin.com/messaging/" target="_blank" rel="noopener">Messages</a>
+            <a class="pill-btn" href="https://www.linkedin.com/feed/?shareActive=true" target="_blank" rel="noopener">Post update</a>
+          </div>
+          <textarea class="notes-area" id="linkedin-notes" placeholder="Notes — who you messaged, follow-ups to send, insights worth remembering…"></textarea>
+          <div class="notes-saved" id="linkedin-notes-saved">Saved</div>
+        </div>
+        <div class="tab-panel" id="tab-inbox">
+          <div class="inbox-head-actions" style="margin-bottom:0.6rem;">
+            <span class="count mono" id="inbox-count"></span>
+            <button class="refresh-btn" id="inbox-refresh" title="Refresh inbox">⟳</button>
+          </div>
+          <div id="inbox-body">
+            <div class="empty-state">Loading…</div>
+          </div>
+        </div>
       </div>
-    </div>
-    <div class="panel glass linkedin-panel">
-      <div class="panel-head">
-        <span class="eyebrow">LinkedIn</span>
-      </div>
-      <div class="linkedin-links">
-        <a class="pill-btn" href="https://www.linkedin.com/in/me/" target="_blank" rel="noopener">My profile</a>
-        <a class="pill-btn" href="https://www.linkedin.com/messaging/" target="_blank" rel="noopener">Messages</a>
-        <a class="pill-btn" href="https://www.linkedin.com/feed/?shareActive=true" target="_blank" rel="noopener">Post update</a>
-      </div>
-      <textarea class="notes-area" id="linkedin-notes" placeholder="Notes — who you messaged, follow-ups to send, insights worth remembering…"></textarea>
-      <div class="notes-saved" id="linkedin-notes-saved">Saved</div>
     </div>
   </section>
 
@@ -639,22 +748,27 @@
       </div>
       <div id="best-match-slot"><div class="empty-state">Loading…</div></div>
     </div>
-    <div class="panel glass inbox-panel">
+
+    <div class="panel glass calendar-panel">
       <div class="panel-head">
-        <span class="eyebrow">Inbox</span>
-        <div class="inbox-head-actions">
-          <span class="count mono" id="inbox-count"></span>
-          <button class="refresh-btn" id="inbox-refresh" title="Refresh inbox">⟳</button>
+        <span class="eyebrow">Calendar</span>
+        <div class="cal-nav">
+          <button class="cal-nav-btn" id="cal-prev" title="Previous month">‹</button>
+          <span class="cal-month-label mono" id="cal-month-label"></span>
+          <button class="cal-nav-btn" id="cal-next" title="Next month">›</button>
         </div>
       </div>
-      <div class="panel-body" id="inbox-body">
-        <div class="empty-state">Loading…</div>
-      </div>
+      <div class="cal-grid" id="cal-grid"></div>
+      <div id="cal-upcoming"><div class="empty-state">No interviews scheduled.</div></div>
     </div>
+
     <div class="panel glass applied-panel">
       <div class="panel-head">
         <span class="eyebrow">Applied</span>
-        <span class="count mono" id="applied-count">—</span>
+        <div class="inbox-head-actions">
+          <span class="count mono" id="applied-count">—</span>
+          <a class="refresh-btn" id="export-csv" href="/api/export/applied.csv" download title="Export CSV">⬇</a>
+        </div>
       </div>
       <div class="panel-body" id="applied-list">
         <div class="empty-state">Nothing applied to yet.</div>
@@ -666,8 +780,15 @@
 <script>
 const API = "";
 let jobs = [];
+let followUps = [];
+let upcomingInterviews = [];
+let calViewDate = new Date();
+let editingInterviewFor = null; // {source, id} or null
+let lastAppliedList = [];
 let selectedJob = null;
 let chatHistory = []; // [{role: "user"|"assistant", content: string}]
+let jobFilter = "";
+let firstNotifyPass = true;
 const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 const $ = (sel) => document.querySelector(sel);
@@ -692,6 +813,70 @@ fsBtn.addEventListener("click", () => {
 document.addEventListener("fullscreenchange", updateFsIcon);
 document.addEventListener("webkitfullscreenchange", updateFsIcon);
 
+/* Desktop notifications for strong (8+/10) new matches - opt-in, off by default */
+const NOTIFY_KEY = "dextor-notify-enabled";
+const NOTIFIED_IDS_KEY = "dextor-notified-ids";
+let notifyEnabled = localStorage.getItem(NOTIFY_KEY) === "true";
+const notifyBtn = document.getElementById("notify-toggle");
+function updateNotifyIcon() {
+  notifyBtn.textContent = notifyEnabled ? "🔔" : "🔕";
+  notifyBtn.classList.toggle("active", notifyEnabled);
+  notifyBtn.title = notifyEnabled
+    ? "Desktop notifications on for strong new matches"
+    : "Enable desktop notifications for strong new matches";
+}
+updateNotifyIcon();
+notifyBtn.addEventListener("click", async () => {
+  if (!("Notification" in window)) {
+    showToast("This browser doesn't support notifications.", "error");
+    return;
+  }
+  if (!notifyEnabled) {
+    const perm = await Notification.requestPermission();
+    if (perm !== "granted") {
+      showToast("Notifications weren't allowed.", "error");
+      return;
+    }
+  }
+  notifyEnabled = !notifyEnabled;
+  localStorage.setItem(NOTIFY_KEY, String(notifyEnabled));
+  updateNotifyIcon();
+  showToast(notifyEnabled ? "Desktop notifications on." : "Desktop notifications off.");
+});
+
+function getNotifiedIds() {
+  try { return new Set(JSON.parse(localStorage.getItem(NOTIFIED_IDS_KEY) || "[]")); }
+  catch { return new Set(); }
+}
+function checkForNewStrongMatches(jobList) {
+  if (!("Notification" in window)) return;
+  const notified = getNotifiedIds();
+  const strong = jobList.filter(j => j.score >= 8);
+  if (firstNotifyPass) {
+    // Seed with what's already here so we only ever notify about genuinely new arrivals.
+    strong.forEach(j => notified.add(jobKey(j)));
+    localStorage.setItem(NOTIFIED_IDS_KEY, JSON.stringify([...notified]));
+    firstNotifyPass = false;
+    return;
+  }
+  if (!notifyEnabled || Notification.permission !== "granted") return;
+  const fresh = strong.filter(j => !notified.has(jobKey(j)));
+  if (!fresh.length) return;
+  for (const j of fresh.slice(0, 3)) {
+    new Notification("Strong match found", { body: `${j.title} @ ${j.company} — ${j.score}/10` });
+    notified.add(jobKey(j));
+  }
+  localStorage.setItem(NOTIFIED_IDS_KEY, JSON.stringify([...notified]));
+}
+
+/* Tabs (Insights / LinkedIn / Inbox) */
+document.getElementById("extras-tabs").addEventListener("click", (e) => {
+  const btn = e.target.closest(".tab-btn");
+  if (!btn) return;
+  document.querySelectorAll("#extras-tabs .tab-btn").forEach(b => b.classList.toggle("active", b === btn));
+  document.querySelectorAll(".tab-panel").forEach(p => p.classList.toggle("active", p.id === `tab-${btn.dataset.tab}`));
+});
+
 document.getElementById("job-search").addEventListener("input", (e) => {
   jobFilter = e.target.value;
   renderJobList();
@@ -705,11 +890,6 @@ function tierClass(score) {
   if (score >= 8) return "tier-strong";
   if (score >= 5) return "tier-look";
   return "tier-low";
-}
-function tierLabel(score) {
-  if (score >= 8) return "Strong fit";
-  if (score >= 5) return "Worth a look";
-  return "Low fit";
 }
 
 async function api(path, opts) {
@@ -737,7 +917,15 @@ function attachTilt(el, maxDeg = 6) {
   el.addEventListener("mouseleave", () => { el.style.transform = ""; });
 }
 
-let jobFilter = "";
+function escapeHtml(s) {
+  return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function formatInterview(iso) {
+  const d = new Date(iso);
+  return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }) +
+    " · " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+}
 
 function renderJobList() {
   const list = document.getElementById("job-list");
@@ -751,7 +939,7 @@ function renderJobList() {
   const q = jobFilter.trim().toLowerCase();
   const visible = jobs
     .map((j, i) => ({ j, i }))
-    .filter(({ j }) => !q || `${j.title} ${j.company} ${j.location}`.toLowerCase().includes(q));
+    .filter(({ j }) => !q || `${j.title} ${j.company} ${j.location} ${j.salary || ""}`.toLowerCase().includes(q));
 
   document.getElementById("queue-count").textContent = q
     ? `${visible.length} of ${jobs.length} jobs`
@@ -768,6 +956,7 @@ function renderJobList() {
     card.className = `job-card ${tierClass(j.score)}` + (selectedJob === jobKey(j) ? " selected" : "");
     const statusBadge = j.status !== "new"
       ? `<span class="status-badge status-${j.status}">${j.status}</span>` : "";
+    const salaryLine = j.salary ? `<p class="meta salary">💶 ${escapeHtml(j.salary)}</p>` : "";
     card.innerHTML = `
       <div class="job-card-top">
         <span class="score-chip mono">#${i + 1} · ${j.score}/10</span>
@@ -775,6 +964,7 @@ function renderJobList() {
       </div>
       <h3>${escapeHtml(j.title)}${statusBadge}</h3>
       <p class="meta">${escapeHtml(j.company)} — ${escapeHtml(j.location)}</p>
+      ${salaryLine}
     `;
     card.addEventListener("click", () => {
       selectedJob = jobKey(j);
@@ -786,22 +976,20 @@ function renderJobList() {
   });
 }
 
-function escapeHtml(s) {
-  return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
 function renderBestMatch(job) {
   const slot = document.getElementById("best-match-slot");
   if (!job) {
     slot.innerHTML = '<div class="empty-state">Nothing outstanding right now.</div>';
     return;
   }
+  const salaryLine = job.salary ? `<p class="meta salary">💶 ${escapeHtml(job.salary)}</p>` : "";
   slot.innerHTML = `
     <div class="best-match-card">
       <span class="eyebrow">Top pick</span>
       <div class="best-match-score mono">${job.score}<span style="font-size:1rem;color:var(--muted);-webkit-text-fill-color:var(--muted);">/10</span></div>
       <h3>${escapeHtml(job.title)}</h3>
       <p class="meta">${escapeHtml(job.company)} — ${escapeHtml(job.location)}</p>
+      ${salaryLine}
       <p class="reason">${escapeHtml(job.reason)}</p>
       <div class="best-match-actions">
         <button class="pill-btn primary" data-action="applied">Mark applied</button>
@@ -814,22 +1002,69 @@ function renderBestMatch(job) {
 }
 
 function renderApplied(list) {
+  lastAppliedList = list;
   const el = document.getElementById("applied-list");
   document.getElementById("applied-count").textContent = list.length;
   if (!list.length) {
     el.innerHTML = '<div class="empty-state">Nothing applied to yet.</div>';
     return;
   }
-  el.innerHTML = list.map(j => `
-    <div class="applied-row">
-      <div>
-        <div class="title">${escapeHtml(j.title)}</div>
-        <div class="company">${escapeHtml(j.company)}</div>
+  el.innerHTML = list.map(j => {
+    const isEditing = editingInterviewFor && editingInterviewFor.source === j.source && editingInterviewFor.id === j.id;
+    const salaryBit = j.salary ? ` · 💶 ${escapeHtml(j.salary)}` : "";
+    const interviewTag = j.interview_at
+      ? `<div class="interview-tag">📅 ${formatInterview(j.interview_at)}</div>` : "";
+    const actionArea = isEditing
+      ? `<div class="interview-edit">
+           <input type="datetime-local" class="interview-input" value="${j.interview_at ? j.interview_at.slice(0, 16) : ''}">
+           <button class="mini-btn" data-action="save-interview" title="Save">✓</button>
+           <button class="mini-btn" data-action="cancel-interview" title="Cancel">✕</button>
+         </div>`
+      : `<button class="cal-set-btn" data-action="edit-interview" title="Set interview date">📅</button>`;
+    return `
+      <div class="applied-row" data-source="${j.source}" data-id="${j.id}">
+        <div>
+          <div class="title">${escapeHtml(j.title)}</div>
+          <div class="company">${escapeHtml(j.company)}${salaryBit}</div>
+          ${interviewTag}
+        </div>
+        <div class="applied-row-actions">
+          <span class="status-badge status-${j.status}">${j.status}</span>
+          ${actionArea}
+        </div>
       </div>
-      <span class="status-badge status-${j.status}">${j.status}</span>
-    </div>
-  `).join("");
+    `;
+  }).join("");
 }
+
+document.getElementById("applied-list").addEventListener("click", async (e) => {
+  const row = e.target.closest(".applied-row");
+  if (!row) return;
+  const source = row.dataset.source, id = row.dataset.id;
+  const action = e.target.dataset.action;
+  if (action === "edit-interview") {
+    editingInterviewFor = { source, id };
+    renderApplied(lastAppliedList);
+  } else if (action === "cancel-interview") {
+    editingInterviewFor = null;
+    renderApplied(lastAppliedList);
+  } else if (action === "save-interview") {
+    const input = row.querySelector(".interview-input");
+    const when = input.value ? new Date(input.value).toISOString() : null;
+    try {
+      await api(`/api/jobs/${source}/${id}/interview`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ when }),
+      });
+      editingInterviewFor = null;
+      showToast("Interview date saved.");
+      await refreshAll();
+    } catch (err) {
+      showToast(`Couldn't save interview date: ${err.message}`, "error");
+    }
+  }
+});
 
 /* Gmail inbox */
 const EMAIL_CATEGORY_LABELS = {
@@ -1003,6 +1238,121 @@ function renderSourceBreakdown(jobList) {
   document.getElementById("source-dist").innerHTML = html;
 }
 
+/* Applications-over-time trend - one axis, thin lines, legend never color-alone */
+const TREND_SERIES = [
+  { key: "applied", label: "Applied", color: "var(--emerald)" },
+  { key: "interviewing", label: "Interview", color: "var(--gold)" },
+  { key: "rejected", label: "Rejected", color: "var(--danger)" },
+];
+
+function renderTrendChart(trend) {
+  const el = document.getElementById("trend-chart");
+  const dates = trend.dates || [];
+  const series = trend.series || {};
+  const allValues = TREND_SERIES.flatMap(s => series[s.key] || []);
+  const hasAny = allValues.some(v => v > 0);
+  if (!dates.length || !hasAny) {
+    el.innerHTML = '<div class="empty-state">No applications tracked yet.</div>';
+    return;
+  }
+
+  const w = 280, h = 90, pad = 6;
+  const max = Math.max(1, ...allValues);
+  const stepX = dates.length > 1 ? (w - pad * 2) / (dates.length - 1) : 0;
+  const toPoints = (values) => values.map((v, i) => {
+    const x = pad + i * stepX;
+    const y = h - pad - (v / max) * (h - pad * 2);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(" ");
+
+  const lines = TREND_SERIES.map(s => {
+    const values = series[s.key] || [];
+    if (!values.some(v => v > 0)) return "";
+    return `<polyline points="${toPoints(values)}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><title>${s.label}: ${values[values.length - 1]} total</title></polyline>`;
+  }).join("");
+
+  const legend = TREND_SERIES.map(s => `
+    <span class="trend-legend-item"><span class="trend-dot" style="background:${s.color}"></span>${s.label}</span>
+  `).join("");
+
+  el.innerHTML = `
+    <svg viewBox="0 0 ${w} ${h}" class="trend-svg" preserveAspectRatio="none">${lines}</svg>
+    <div class="trend-legend">${legend}</div>
+  `;
+}
+
+/* Interview calendar - compact month view + upcoming list */
+function renderCalendar() {
+  const grid = document.getElementById("cal-grid");
+  const label = document.getElementById("cal-month-label");
+  const year = calViewDate.getFullYear();
+  const month = calViewDate.getMonth();
+  label.textContent = calViewDate.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+
+  const interviewDays = new Set(upcomingInterviews.filter(j => j.interview_at).map(j => j.interview_at.slice(0, 10)));
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  const firstOfMonth = new Date(year, month, 1);
+  const startOffset = (firstOfMonth.getDay() + 6) % 7; // Monday-first
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  const dayNames = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
+  let html = dayNames.map(d => `<div class="cal-dow">${d}</div>`).join("");
+  for (let i = 0; i < startOffset; i++) html += `<div class="cal-cell empty"></div>`;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    const cls = [
+      "cal-cell",
+      dateStr === todayStr ? "today" : "",
+      interviewDays.has(dateStr) ? "has-interview" : "",
+    ].filter(Boolean).join(" ");
+    html += `<div class="${cls}" title="${interviewDays.has(dateStr) ? "Interview scheduled" : ""}">${d}</div>`;
+  }
+  grid.innerHTML = html;
+
+  const upcomingEl = document.getElementById("cal-upcoming");
+  const nowIso = new Date().toISOString();
+  const future = upcomingInterviews.filter(j => j.interview_at && j.interview_at >= nowIso);
+  upcomingEl.innerHTML = !future.length
+    ? '<div class="empty-state">No interviews scheduled.</div>'
+    : future.slice(0, 3).map(j => `
+        <div class="upcoming-row">
+          <span class="upcoming-when mono">${formatInterview(j.interview_at)}</span>
+          <span class="upcoming-what">${escapeHtml(j.title)} @ ${escapeHtml(j.company)}</span>
+        </div>
+      `).join("");
+}
+
+document.getElementById("cal-prev").addEventListener("click", () => {
+  calViewDate = new Date(calViewDate.getFullYear(), calViewDate.getMonth() - 1, 1);
+  renderCalendar();
+});
+document.getElementById("cal-next").addEventListener("click", () => {
+  calViewDate = new Date(calViewDate.getFullYear(), calViewDate.getMonth() + 1, 1);
+  renderCalendar();
+});
+
+/* Alert banner - follow-up nudges + interviews happening today */
+function renderAlertBanner() {
+  const banner = document.getElementById("alert-banner");
+  const text = document.getElementById("alert-banner-text");
+  const parts = [];
+  if (followUps.length) {
+    parts.push(`${followUps.length} application${followUps.length > 1 ? "s" : ""} could use a follow-up`);
+  }
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayInterviews = upcomingInterviews.filter(j => j.interview_at && j.interview_at.slice(0, 10) === todayStr);
+  if (todayInterviews.length) {
+    parts.push(`Interview today: ${todayInterviews.map(j => j.company).join(", ")}`);
+  }
+  if (!parts.length) {
+    banner.classList.add("hidden");
+    return;
+  }
+  text.textContent = "⚡ " + parts.join("   ·   ");
+  banner.classList.remove("hidden");
+}
+
 function showToast(message, kind = "ok") {
   const root = document.getElementById("toast-root");
   const el = document.createElement("div");
@@ -1027,19 +1377,28 @@ async function setStatus(job, status) {
 }
 
 async function refreshAll() {
-  const [jobsRes, bestRes, appliedRes, progressRes] = await Promise.all([
+  const [jobsRes, bestRes, appliedRes, progressRes, trendRes, followUpsRes, calendarRes] = await Promise.all([
     api("/api/jobs"),
     api("/api/best-match"),
     api("/api/applied"),
     api("/api/progress"),
+    api("/api/progress/trend?days=30"),
+    api("/api/follow-ups?days=7"),
+    api("/api/calendar"),
   ]);
   jobs = jobsRes;
+  followUps = followUpsRes;
+  upcomingInterviews = calendarRes;
   renderJobList();
   renderBestMatch(bestRes);
   renderApplied(appliedRes);
   renderProgress(progressRes);
   renderScoreDistribution(jobs);
   renderSourceBreakdown(jobs);
+  renderTrendChart(trendRes);
+  renderCalendar();
+  renderAlertBanner();
+  checkForNewStrongMatches(jobs);
 }
 
 /* Chat */
@@ -1068,7 +1427,7 @@ function addDownloadLink(el, url) {
   link.href = url;
   link.download = "";
   link.className = "download-link";
-  link.textContent = "⬇ Download tailored CV";
+  link.textContent = "⬇ Download";
   el.appendChild(link);
   el.parentElement.scrollTop = el.parentElement.scrollHeight;
 }
@@ -1150,9 +1509,9 @@ appendMessage("agent", "Hey, I'm Dextor — ask me anything: what's new, how a s
 refreshAll().catch((e) => appendMessage("agent", `Couldn't load your data: ${e.message}`));
 loadInbox();
 
-// Keep the queue/insights/applied panels fresh automatically. Gmail is
-// excluded - it costs a Groq call per load, so it only refreshes on the
-// explicit refresh button.
+// Keep the queue/insights/calendar/applied panels fresh automatically. Gmail
+// is excluded - it costs a Groq call per load, so it only refreshes on its
+// own explicit refresh button.
 setInterval(refreshAll, 60000);
 </script>
 </body>

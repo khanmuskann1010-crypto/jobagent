@@ -39,10 +39,14 @@ _DETAILS_RE = re.compile(
 )
 
 
+_PLACEHOLDER_COMP = {"", "not provided", "n/a", "none"}
+
+
 def parse_search_results(raw_text: str) -> list[dict]:
     """Parse mcp__Indeed__search_jobs's text into listing dicts (no description yet)."""
     listings = []
     for m in _SEARCH_BLOCK_RE.finditer(raw_text):
+        comp = m.group("comp").strip()
         listings.append(
             {
                 "id": m.group("id").strip(),
@@ -54,6 +58,7 @@ def parse_search_results(raw_text: str) -> list[dict]:
                 "contract_type": m.group("job_type").strip(),
                 "url": m.group("url").strip(),
                 "date_posted": m.group("posted").strip(),
+                "salary": "" if comp.lower() in _PLACEHOLDER_COMP else comp,
             }
         )
     return listings

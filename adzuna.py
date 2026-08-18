@@ -43,6 +43,15 @@ def search_jobs(keywords: str, where: str = "Paris", max_results: int = 25) -> l
     return resp.json().get("results", [])
 
 
+def _format_salary(raw: dict) -> str:
+    lo, hi = raw.get("salary_min"), raw.get("salary_max")
+    if not lo and not hi:
+        return ""
+    if lo and hi and round(lo) != round(hi):
+        return f"€{round(lo):,}–{round(hi):,}".replace(",", " ")
+    return f"€{round(lo or hi):,}".replace(",", " ")
+
+
 def normalize_listing(raw: dict) -> dict:
     """Pull out just the fields we need from Adzuna's schema."""
     return {
@@ -55,6 +64,7 @@ def normalize_listing(raw: dict) -> dict:
         "contract_type": raw.get("contract_type") or raw.get("contract_time") or "",
         "url": raw.get("redirect_url", ""),
         "date_posted": raw.get("created", ""),
+        "salary": _format_salary(raw),
     }
 
 

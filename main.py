@@ -25,7 +25,7 @@ from dotenv import load_dotenv
 
 import adzuna
 import fetch_jobs
-from db import filter_unseen, save_scored
+from db import auto_archive_stale_jobs, filter_unseen, save_scored
 from digest import generate_html
 from score_jobs import score_all
 
@@ -64,6 +64,10 @@ def main():
         help="Path to a JSON file of pre-fetched listings (e.g. Indeed) to merge in",
     )
     args = parser.parse_args()
+
+    archived = auto_archive_stale_jobs()
+    if archived:
+        print(f"Archived {archived} low-score listing(s) untouched for 30+ days.")
 
     print(f"Searching France Travail + Adzuna for '{args.keywords}'...")
 

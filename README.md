@@ -134,33 +134,41 @@ Same commands, typed instead of spoken, printed instead of read aloud.
 ## Dashboard
 
 A local web app (FastAPI backend + a single-page frontend, dark theme only)
-named Dextor — the job queue, a real conversational assistant, a Gmail
-inbox view, a LinkedIn quick-access panel, an applied-jobs tracker, and a
-progress/insights view, built around three columns:
+named Dextor — the job queue, a real conversational assistant, an interview
+calendar, an applied-jobs tracker, and a tabbed Insights/LinkedIn/Inbox
+panel, built around three columns:
 
-- **Left** — the job queue (search/filter box on top, all scored listings
-  ranked by fit) → **Insights** (status funnel, score distribution, jobs
-  by source) → **LinkedIn** (quick links to your profile/messages/posting,
-  plus a notes scratchpad saved in your browser)
+- **Left** — the job queue (search/filter box on top, matches title,
+  company, location, and salary; ranked by fit) → a tabbed panel switching
+  between **Insights** (status funnel, score distribution, jobs by source,
+  an applications-over-time trend), **LinkedIn** (quick links to your
+  profile/messages/posting plus a notes scratchpad saved in your browser),
+  and **Inbox** (recent Gmail messages, with job-relevant ones flagged by
+  the same LLM that scores listings)
 - **Center** — Dextor, a genuine conversational agent (`chat_agent.py`),
   not a fixed command parser. Ask it anything about your search - it
   decides for itself when to look up a job, pull full details, tailor your
-  CV, mark something applied, or check progress, via tool calls, the same
+  CV, draft a cover letter, mark something applied, schedule an interview,
+  check who needs a follow-up, or check progress, via tool calls, the same
   way an LLM agent works. Typed or spoken (your browser's built-in speech
   recognition - Safari or Chrome - no extra install or paid API); it only
   speaks a reply back when you used the mic, never for typed messages.
   Clicking a job in the queue asks about it directly.
 - **Right** — your best current match (highest-scoring listing you haven't
-  acted on) with a "Mark applied" button → **Inbox** (recent Gmail
-  messages, with job-relevant ones - interviews, recruiter replies,
-  application confirmations - flagged by the same LLM that scores
-  listings) → the applied-jobs tracker
+  acted on) with a "Mark applied" button → an interview **Calendar**
+  (compact month view + your next few interviews - set a date by asking
+  Dextor, or with the 📅 button on an applied row) → the applied-jobs
+  tracker (with a CSV export button)
 
-Other conveniences: a full screen toggle (top right), toast confirmations
-on status changes, a "/" keyboard shortcut to jump to the chat box, and the
-queue/insights/applied panels auto-refresh every 60 seconds (the inbox
-refreshes only when you click its refresh icon, since each load costs a
-Groq call).
+Other conveniences: a full screen toggle and an opt-in desktop-notification
+bell for strong (8+/10) new matches, both top right; a slim alert banner
+under the header when an application could use a follow-up or you have an
+interview today; toast confirmations on status changes; a "/" keyboard
+shortcut to jump to the chat box; low-score listings nobody's acted on for
+30+ days quietly move to "skipped" so the queue stays current; and the
+queue/insights/calendar/applied panels auto-refresh every 60 seconds (the
+inbox refreshes only when you click its own refresh icon, since each load
+costs a Groq call).
 
 ```bash
 pip install -r requirements-api.txt -r requirements.txt
@@ -215,6 +223,12 @@ identify a listing (e.g. `indeed`/`JOBSEARCH_145`).
 | GET | `/api/best-match` | Highest-scoring job still at status `new` |
 | GET | `/api/progress` | `{total_scored, by_status: {...}}` counts for the funnel |
 | POST | `/api/jobs/{source}/{external_id}/tailor-cv` | Runs `cv_tailor.py` against this listing, returns the suggestions |
+| POST | `/api/jobs/{source}/{external_id}/cover-letter` | Runs `cover_letter.py` against this listing, returns the letter |
+| PATCH | `/api/jobs/{source}/{external_id}/interview` | Body `{"when": "2026-08-22T14:00:00"}` (or `null` to clear) |
+| GET | `/api/follow-ups?days=7` | Applications with no status update in `days` - worth a nudge |
+| GET | `/api/calendar` | Jobs with a scheduled interview, soonest first |
+| GET | `/api/progress/trend?days=30` | `{dates, series: {applied, interviewing, rejected}}` cumulative counts for the trend chart |
+| GET | `/api/export/applied.csv` | CSV download of your applied/interviewing/rejected jobs |
 | POST | `/api/chat` | Body `{"message": "...", "history": [...]}` — free-form chat with Dextor (`chat_agent.py`), returns `{reply, download_url}` |
 | GET | `/api/gmail/status` | `{connected, credentials_configured}` |
 | GET | `/api/gmail/connect` | Redirects to Google's consent screen |
@@ -264,6 +278,7 @@ job-search-agent/
 ├── digest.py            # styled HTML digest generator
 ├── score_jobs.py        # LLM scoring logic (Groq by default)
 ├── cv_tailor.py          # LLM CV-tailoring logic (Groq by default)
+├── cover_letter.py        # LLM cover-letter generation (Groq by default)
 ├── voice_agent.py        # CLI voice interface
 ├── api.py                # dashboard backend (FastAPI)
 ├── chat_agent.py          # tool-using conversational agent for the dashboard chat

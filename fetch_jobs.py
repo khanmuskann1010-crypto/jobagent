@@ -81,6 +81,7 @@ def normalize_listing(raw: dict) -> dict:
         "contract_type": raw.get("typeContratLibelle", ""),
         "url": raw.get("origineOffre", {}).get("urlOrigine", ""),
         "date_posted": raw.get("dateCreation", ""),
+        "salary": raw.get("salaire", {}).get("libelle", "") or "",
     }
 
 

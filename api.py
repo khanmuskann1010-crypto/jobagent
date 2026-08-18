@@ -12,11 +12,13 @@ Run:
 Then open http://localhost:8000
 """
 
+import csv
+import io
 from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -24,17 +26,23 @@ import chat_agent
 import db
 import gmail_agent
 from groq import Groq
+from cover_letter import generate_cover_letter, save_cover_letter
 from cv_tailor import OUTPUT_DIR as CV_SUGGESTIONS_DIR
 from cv_tailor import load_cv, save_tailored_cv, tailor_for_job
 
 load_dotenv()
 CV_SUGGESTIONS_DIR.mkdir(exist_ok=True)  # StaticFiles needs the dir to exist at mount time
+db.auto_archive_stale_jobs()  # quietly tidy up on every server start, same housekeeping main.py does
 
 app = FastAPI(title="Job Search Agent API")
 
 
 class StatusUpdate(BaseModel):
     status: str
+
+
+class InterviewUpdate(BaseModel):
+    when: str | None = None
 
 
 class ChatMessage(BaseModel):
@@ -92,6 +100,47 @@ def progress():
     return db.get_progress_stats()
 
 
+@app.get("/api/progress/trend")
+def progress_trend(days: int = 30):
+    return db.get_status_trend(days=days)
+
+
+@app.get("/api/follow-ups")
+def follow_ups(days: int = 7):
+    """Applications with no status update in `days` - worth a nudge."""
+    return db.get_stale_applications(days=days)
+
+
+@app.get("/api/calendar")
+def calendar():
+    """Jobs with a scheduled interview, soonest first."""
+    return db.get_upcoming_interviews()
+
+
+@app.patch("/api/jobs/{source}/{external_id}/interview")
+def set_interview(source: str, external_id: str, body: InterviewUpdate):
+    if not db.get_job(source, external_id):
+        raise HTTPException(404, "job not found")
+    db.set_interview_datetime(source, external_id, body.when)
+    return db.get_job(source, external_id)
+
+
+@app.get("/api/export/applied.csv")
+def export_applied_csv():
+    rows = [j for j in _sorted_jobs() if j["status"] in ("applied", "interviewing", "rejected")]
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["title", "company", "location", "score", "status", "status_updated_at", "salary", "interview_at", "url"])
+    for j in rows:
+        writer.writerow([j["title"], j["company"], j["location"], j["score"], j["status"],
+                          j["status_updated_at"], j["salary"], j["interview_at"], j["url"]])
+    buf.seek(0)
+    return StreamingResponse(
+        buf, media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=applied_jobs.csv"},
+    )
+
+
 @app.post("/api/jobs/{source}/{external_id}/tailor-cv")
 def tailor_cv(source: str, external_id: str):
     job = db.get_job(source, external_id)
@@ -110,6 +159,26 @@ def tailor_cv(source: str, external_id: str):
         raise HTTPException(502, suggestions["error"])
     path = save_tailored_cv(job, suggestions)
     return {**suggestions, "download_url": f"/cv-notes/{path.name}"}
+
+
+@app.post("/api/jobs/{source}/{external_id}/cover-letter")
+def cover_letter(source: str, external_id: str):
+    job = db.get_job(source, external_id)
+    if not job:
+        raise HTTPException(404, "job not found")
+    try:
+        cv_text = load_cv()
+    except FileNotFoundError as e:
+        raise HTTPException(400, str(e))
+    try:
+        client = Groq()
+    except Exception:
+        raise HTTPException(400, "GROQ_API_KEY isn't configured - add it to .env to use cover letters.")
+    letter = generate_cover_letter(client, cv_text, job)
+    if "error" in letter:
+        raise HTTPException(502, letter["error"])
+    path = save_cover_letter(job, letter)
+    return {**letter, "download_url": f"/cv-notes/{path.name}"}
 
 
 @app.post("/api/chat")

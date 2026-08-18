@@ -10,10 +10,12 @@ needs one.
 """
 
 import json
+from datetime import date
 
 from groq import Groq
 
 import db
+from cover_letter import generate_cover_letter, save_cover_letter
 from cv_tailor import save_tailored_cv, tailor_for_job
 
 MODEL = "openai/gpt-oss-120b"
@@ -96,20 +98,76 @@ TOOLS = [
             "parameters": {"type": "object", "properties": {}},
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "generate_cover_letter",
+            "description": (
+                "Generate a tailored cover letter for one specific job, grounded in the candidate's "
+                "real CV, as a downloadable PDF. Only call this when the user actually asks for a cover "
+                "letter - it takes real time, don't call it speculatively."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {"job_number": {"type": "integer"}},
+                "required": ["job_number"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "schedule_interview",
+            "description": (
+                "Record or update the interview date/time for a job. Convert whatever the user says "
+                "(e.g. 'Friday at 2pm') into an absolute ISO 8601 datetime yourself using today's date, "
+                "given in the system prompt, as the reference point."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "job_number": {"type": "integer"},
+                    "when": {
+                        "type": "string",
+                        "description": "ISO 8601 datetime, e.g. '2026-08-22T14:00:00'. Omit or pass an empty string to clear it.",
+                    },
+                },
+                "required": ["job_number"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_follow_ups",
+            "description": "List applications that have had no status update in a while - candidates worth a follow-up nudge.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "days": {"type": "integer", "description": "Minimum days since the last update (default 7)."},
+                },
+            },
+        },
+    },
 ]
 
-SYSTEM_PROMPT = """Your name is Dextor. You are a warm, sharp, conversational job-search \
+def _system_prompt() -> str:
+    return f"""Your name is Dextor. You are a warm, sharp, conversational job-search \
 assistant helping one candidate manage their job search. You're talking to them directly, like \
 a knowledgeable friend who's on top of their applications - not a command-line tool. Have a real \
 conversation: answer questions, share honest opinions on listings, make small talk if they do, \
 ask a clarifying question when something's ambiguous rather than guessing. If asked your name, \
 say you're Dextor.
 
-You have tools to list the job queue, get full details on one job, tailor the candidate's CV \
-for a job, update a job's application status, and check overall progress. Use them whenever you \
-need real data - never guess or invent job details, scores, or statuses. Job numbers refer to \
-position in the queue as currently ranked (1 = best fit), matching the numbers shown in the \
-app's UI, so "job 3" and "the third one" mean the same thing.
+Today's date is {date.today().isoformat()}. Use it as the reference point for any relative dates \
+the candidate mentions (e.g. "Friday at 2pm").
+
+You have tools to list the job queue, get full details on one job, tailor the candidate's CV for \
+a job, draft a cover letter for a job, update a job's application status, schedule/update an \
+interview date, list applications worth a follow-up nudge, and check overall progress. Use them \
+whenever you need real data - never guess or invent job details, scores, statuses, or dates. Job \
+numbers refer to position in the queue as currently ranked (1 = best fit), matching the numbers \
+shown in the app's UI, so "job 3" and "the third one" mean the same thing.
 
 Keep replies conversational and reasonably brief, like a chat message, not a report. Don't dump \
 the full job list unless asked for one."""
@@ -186,6 +244,39 @@ def _execute_tool(
     if name == "get_progress":
         return db.get_progress_stats(), None
 
+    if name == "generate_cover_letter":
+        n = args.get("job_number")
+        if not n or not (1 <= n <= len(jobs)):
+            return {"error": f"No job number {n} - the queue has {len(jobs)} jobs."}, None
+        if not cv_text:
+            return {"error": "No CV on file - the candidate needs to fill in cv.md first."}, None
+        job = jobs[n - 1]
+        letter = generate_cover_letter(client, cv_text, job)
+        if "error" in letter:
+            return {"error": letter["error"]}, None
+        path = save_cover_letter(job, letter)
+        return {"ok": True, "job_number": n}, f"/cv-notes/{path.name}"
+
+    if name == "schedule_interview":
+        n = args.get("job_number")
+        if not n or not (1 <= n <= len(jobs)):
+            return {"error": f"No job number {n} - the queue has {len(jobs)} jobs."}, None
+        job = jobs[n - 1]
+        when = args.get("when") or None
+        db.set_interview_datetime(job["source"], job["id"], when)
+        return {"ok": True, "job_number": n, "interview_at": when}, None
+
+    if name == "get_follow_ups":
+        days = args.get("days") or 7
+        stale = db.get_stale_applications(days=days)
+        by_key = {(j["source"], j["id"]): i for i, j in enumerate(jobs, start=1)}
+        return {
+            "follow_ups": [
+                {**_job_summary(j, by_key.get((j["source"], j["id"]), 0)), "status_updated_at": j["status_updated_at"]}
+                for j in stale
+            ]
+        }, None
+
     return {"error": f"unknown tool {name}"}, None
 
 
@@ -204,7 +295,7 @@ def chat(
             None,
         )
 
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}] + history
+    messages = [{"role": "system", "content": _system_prompt()}] + history
     download_url = None
 
     for _ in range(max_rounds):
