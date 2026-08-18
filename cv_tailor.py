@@ -83,7 +83,12 @@ def load_cv() -> str:
 
 
 def tailor_for_job(client: Groq, cv_text: str, job: dict, attempts: int = 2) -> dict:
-    description = (job.get("description") or "")[:3000]
+    # Groq's free tier caps openai/gpt-oss-120b at 8000 tokens/minute total,
+    # counting input + reserved max_tokens together in a single request -
+    # confirmed via a live 413 (Requested 9972 against Limit 8000) with the
+    # earlier max_tokens=8000. Keep the job description short so input stays
+    # small, and cap max_tokens well under the remaining headroom.
+    description = (job.get("description") or "")[:1500]
     user_content = f"""CANDIDATE CV:
 {cv_text}
 
@@ -98,7 +103,7 @@ Description: {description}"""
         try:
             response = client.chat.completions.create(
                 model=MODEL,
-                max_tokens=8000,
+                max_tokens=4500,
                 reasoning_effort="low",
                 response_format={"type": "json_object"},
                 messages=[
