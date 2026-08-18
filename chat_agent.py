@@ -16,6 +16,7 @@ from groq import Groq
 
 import db
 import rejection_insights
+from groq_errors import friendly_groq_error
 from cover_letter import generate_cover_letter, save_cover_letter
 from cv_tailor import save_tailored_cv, tailor_for_job
 
@@ -407,7 +408,7 @@ def chat(
             except Exception as e:
                 last_error = e
         if response is None:
-            return f"Something went wrong on my end: {last_error}", downloads
+            return friendly_groq_error(last_error), downloads
 
         msg = response.choices[0].message
 

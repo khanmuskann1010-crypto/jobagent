@@ -10,6 +10,8 @@ import json
 
 from groq import Groq
 
+from groq_errors import friendly_groq_error
+
 MODEL = "openai/gpt-oss-120b"
 MIN_REJECTED = 3
 
@@ -57,4 +59,4 @@ def analyze_rejections(client: Groq | None, rejected_jobs: list[dict]) -> dict:
         )
         return json.loads(response.choices[0].message.content)
     except Exception as e:
-        return {"error": f"Couldn't analyze rejections: {e}"}
+        return {"error": friendly_groq_error(e)}

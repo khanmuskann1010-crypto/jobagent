@@ -12,6 +12,7 @@ from fpdf import FPDF, XPos, YPos
 from groq import Groq
 
 from cv_tailor import OUTPUT_DIR, _pdf_safe
+from groq_errors import friendly_groq_error
 
 CV_PATH = Path(__file__).parent / "cv.md"
 MODEL = "openai/gpt-oss-120b"
@@ -72,7 +73,7 @@ Description: {description}"""
             )
             raw_text = response.choices[0].message.content.strip()
         except Exception as e:
-            last_error = f"Cover letter request failed: {e}"
+            last_error = friendly_groq_error(e)
             continue
 
         try:

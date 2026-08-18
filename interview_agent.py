@@ -8,6 +8,8 @@ real CV so questions feel specific rather than generic.
 
 from groq import Groq
 
+from groq_errors import friendly_groq_error
+
 MODEL = "openai/gpt-oss-120b"
 
 SYSTEM_PROMPT_TEMPLATE = """You are Dextor, running a mock job interview with a candidate for a \
@@ -62,4 +64,4 @@ def interview_turn(client: Groq | None, history: list[dict], cv_text: str | None
         )
         return response.choices[0].message.content or "..."
     except Exception as e:
-        return f"Something went wrong on my end: {e}"
+        return friendly_groq_error(e)

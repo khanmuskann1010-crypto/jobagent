@@ -11,6 +11,8 @@ from pathlib import Path
 from fpdf import FPDF, XPos, YPos
 from groq import Groq
 
+from groq_errors import friendly_groq_error
+
 CV_PATH = Path(__file__).parent / "cv.md"
 OUTPUT_DIR = Path(__file__).parent / "cv_suggestions"
 MODEL = "openai/gpt-oss-120b"
@@ -117,7 +119,7 @@ Description: {description}"""
             # runs out of budget mid-JSON (even with generous max_tokens) and
             # Groq rejects the incomplete output outright - worth one retry
             # before giving up, since it's an independent roll of the dice.
-            last_error = f"Tailoring request failed: {e}"
+            last_error = friendly_groq_error(e)
             continue
 
         try:
