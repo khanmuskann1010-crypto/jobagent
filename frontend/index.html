@@ -415,7 +415,14 @@
   .trend-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
 
   /* Chat column */
-  .col-center { display: flex; flex-direction: column; min-height: 0; }
+  .col-center {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    width: 100%;
+    max-width: 680px;
+    margin: 0 auto;
+  }
   .chat-panel { padding: 1.1rem 1.3rem; flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
   .chat-log { flex: 1 1 auto; overflow-y: auto; display: flex; flex-direction: column; gap: 0.7rem; padding-bottom: 0.5rem; }
   .msg {
