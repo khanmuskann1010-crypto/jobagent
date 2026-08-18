@@ -24,6 +24,8 @@ from pydantic import BaseModel
 
 import chat_agent
 import db
+import interview_agent
+import rejection_insights
 from groq import Groq
 from cover_letter import generate_cover_letter, save_cover_letter
 from cv_tailor import OUTPUT_DIR as CV_SUGGESTIONS_DIR
@@ -54,6 +56,17 @@ class InterviewUpdate(BaseModel):
 class ChatMessage(BaseModel):
     message: str
     history: list[dict] = []
+
+
+class InterviewMessage(BaseModel):
+    history: list[dict] = []
+
+
+def _groq_client() -> Groq | None:
+    try:
+        return Groq()
+    except Exception:
+        return None
 
 
 def _sorted_jobs() -> list[dict]:
@@ -187,6 +200,55 @@ def cover_letter(source: str, external_id: str):
     return {**letter, "download_url": f"/cv-notes/{path.name}"}
 
 
+@app.post("/api/jobs/{source}/{external_id}/apply-kit")
+def apply_kit(source: str, external_id: str):
+    """Tailored CV + cover letter together, in one call."""
+    job = db.get_job(source, external_id)
+    if not job:
+        raise HTTPException(404, "job not found")
+    try:
+        cv_text = load_cv()
+    except FileNotFoundError as e:
+        raise HTTPException(400, str(e))
+    client = _groq_client()
+    if client is None:
+        raise HTTPException(400, "GROQ_API_KEY isn't configured - add it to .env to use the apply kit.")
+
+    downloads = []
+    cv_data = tailor_for_job(client, cv_text, job)
+    if "error" not in cv_data:
+        path = save_tailored_cv(job, cv_data)
+        downloads.append({"label": "Tailored CV", "url": f"/cv-notes/{path.name}"})
+    letter = generate_cover_letter(client, cv_text, job)
+    if "error" not in letter:
+        path = save_cover_letter(job, letter)
+        downloads.append({"label": "Cover letter", "url": f"/cv-notes/{path.name}"})
+
+    if not downloads:
+        raise HTTPException(502, "Both the CV and cover letter generation failed - try again.")
+    return {"downloads": downloads}
+
+
+@app.get("/api/rejections/analysis")
+def rejections_analysis():
+    """Looks for genuine patterns across rejected applications."""
+    rejected = [j for j in _sorted_jobs() if j["status"] == "rejected"]
+    return rejection_insights.analyze_rejections(_groq_client(), rejected)
+
+
+@app.post("/api/interview")
+def interview(body: InterviewMessage):
+    """Drives the mock-interview overlay - a separate, tool-free conversation
+    loop (interview_agent.py) scoped to growth marketing interview questions.
+    Empty history triggers Dextor's opening greeting + first question."""
+    try:
+        cv_text = load_cv()
+    except FileNotFoundError:
+        cv_text = None
+    reply = interview_agent.interview_turn(_groq_client(), body.history, cv_text)
+    return {"reply": reply}
+
+
 @app.post("/api/chat")
 def chat(body: ChatMessage):
     """Powers the dashboard's chat/voice panel with a real tool-using LLM
@@ -200,20 +262,17 @@ def chat(body: ChatMessage):
     except FileNotFoundError:
         cv_text = None
 
-    try:
-        client = Groq()
-    except Exception:
-        client = None
+    client = _groq_client()
 
     history = body.history + [{"role": "user", "content": body.message}]
     try:
-        reply, download_url = chat_agent.chat(client, history, jobs, cv_text)
+        reply, downloads = chat_agent.chat(client, history, jobs, cv_text)
     except Exception as e:
         # Belt-and-suspenders: chat_agent.chat() already handles LLM/tool
         # errors gracefully, but a genuinely unexpected bug here shouldn't
         # 500 the request - the chat panel should always get a reply to show.
-        return {"reply": f"Something went wrong on my end: {e}", "download_url": None}
-    return {"reply": reply, "download_url": download_url}
+        return {"reply": f"Something went wrong on my end: {e}", "downloads": []}
+    return {"reply": reply, "downloads": downloads}
 
 
 def _gmail_redirect_uri(request: Request) -> str:

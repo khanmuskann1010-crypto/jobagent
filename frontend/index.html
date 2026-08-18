@@ -198,7 +198,7 @@
     flex: 1 1 auto;
     min-height: 0;
     display: grid;
-    grid-template-columns: 330px minmax(0, 1fr) 350px;
+    grid-template-columns: 300px minmax(0, 1fr) 460px;
     gap: 1.1rem;
     padding: 1.1rem;
     position: relative;
@@ -572,11 +572,12 @@
   .chat-panel { padding: 1.1rem 1.3rem; flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; min-width: 0; }
   .chat-log { flex: 1 1 auto; overflow-y: auto; display: flex; flex-direction: column; gap: 0.7rem; padding-bottom: 0.5rem; }
   .msg {
-    max-width: 78%;
-    padding: 0.6rem 0.85rem;
+    max-width: 88%;
+    padding: 0.65rem 0.9rem;
     border-radius: 14px;
-    font-size: 0.9rem;
-    line-height: 1.45;
+    font-size: 0.94rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
     animation: msg-in 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
   @keyframes msg-in {
@@ -819,6 +820,102 @@
   }
   .mini-btn:hover { color: var(--emerald); }
 
+  /* Mock interview - a full-screen takeover, entered by clicking the orb */
+  .interview-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    padding: 1.6rem 2rem 2rem;
+    animation: interview-in 0.3s ease both;
+  }
+  .interview-overlay.hidden { display: none; }
+  @keyframes interview-in {
+    from { opacity: 0; transform: scale(0.99); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  .interview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.2rem;
+    flex: 0 0 auto;
+    max-width: 760px;
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .interview-log {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    max-width: 760px;
+    margin: 0 auto;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+  }
+  .interview-input-row {
+    display: flex;
+    gap: 0.55rem;
+    max-width: 760px;
+    margin: 1.1rem auto 0;
+    width: 100%;
+    flex: 0 0 auto;
+  }
+  .interview-input-row input {
+    flex: 1 1 auto;
+    padding: 0.7rem 0.95rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 0.9rem;
+  }
+
+  /* Focus mode - hides everything but the queue + chat, red/black theme */
+  .focus-timer {
+    position: fixed;
+    top: 4.2rem;
+    right: 1.75rem;
+    z-index: 30;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    padding: 0.4rem 0.9rem;
+    border-radius: 999px;
+    font-size: 0.76rem;
+    color: var(--gold-text);
+    animation: banner-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  body.focus-mode {
+    --bg: #0a0303;
+    --bg-2: #120505;
+    --surface: rgba(255, 90, 77, 0.05);
+    --surface-2: rgba(255, 90, 77, 0.03);
+    --glass-bg: rgba(24, 8, 6, 0.6);
+    --glass-border: rgba(255, 120, 100, 0.14);
+    --emerald: #ff5a4d;
+    --emerald-dark: #d9392c;
+    --emerald-wash: rgba(255, 90, 77, 0.16);
+    --gold: #ff9c70;
+    --gold-wash: rgba(255, 156, 112, 0.12);
+    --gold-text: #ff9c70;
+    --focus: #ff5a4d;
+    --glow-1: rgba(255, 90, 77, 0.3);
+    --glow-2: rgba(217, 57, 44, 0.18);
+    --shadow-color: rgba(0, 0, 0, 0.55);
+  }
+  body.focus-mode #focus-toggle { border-color: var(--emerald); background: var(--emerald-wash); color: var(--emerald); }
+  body.focus-mode .col-left,
+  body.focus-mode .calendar-panel,
+  body.focus-mode #notify-toggle { display: none; }
+  body.focus-mode main { grid-template-columns: minmax(0, 1fr) 460px; }
+  body.focus-mode .col-right { grid-template-rows: minmax(0, 1fr); }
+
   ::-webkit-scrollbar { width: 8px; }
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 </style>
@@ -834,6 +931,7 @@
     <span class="date mono" id="today-date"></span>
     <span class="status-pulse"><span class="dot"></span>live</span>
     <button class="icon-btn" id="notify-toggle" title="Enable desktop notifications for strong new matches" aria-label="Toggle notifications">🔕</button>
+    <button class="icon-btn" id="focus-toggle" title="Enter focus mode" aria-label="Toggle focus mode">🎯</button>
     <button class="icon-btn" id="fullscreen-toggle" title="Toggle full screen" aria-label="Toggle full screen">⛶</button>
   </div>
 </header>
@@ -959,6 +1057,22 @@
     </div>
   </section>
 </main>
+
+<div class="focus-timer hidden" id="focus-timer"></div>
+
+<div class="interview-overlay hidden" id="interview-overlay">
+  <div class="interview-header">
+    <span class="eyebrow">Mock Interview — Growth Marketing</span>
+    <button class="icon-btn" id="interview-exit" title="End interview" aria-label="End interview">✕</button>
+  </div>
+  <div class="interview-log" id="interview-log"></div>
+  <div class="interview-input-row">
+    <button class="icon-btn" id="interview-mic-btn" title="Speak">🎙️</button>
+    <button class="icon-btn hidden" id="interview-stop-btn" title="Stop talking">⏹</button>
+    <input id="interview-input" type="text" placeholder="Type your answer…" autocomplete="off">
+    <button class="send-btn" id="interview-send-btn">Send</button>
+  </div>
+</div>
 
 <script>
 const API = "";
@@ -1153,6 +1267,7 @@ function renderJobList() {
       selectedJob = jobKey(j);
       renderJobList();
       askAboutJob(i + 1);
+      if (j.url) window.open(j.url, "_blank", "noopener");
     });
     attachTilt(card, 4);
     list.appendChild(card);
@@ -1359,6 +1474,7 @@ function setOrbState(state) {
   statusEl.textContent = meta.status;
   statusEl.style.color = meta.color;
   document.getElementById("stop-speak-btn").classList.toggle("hidden", state !== "speaking");
+  document.getElementById("interview-stop-btn").classList.toggle("hidden", state !== "speaking");
 }
 function currentOrbState() {
   return document.getElementById("dextor-orb").className.replace("dextor-orb orb-", "").trim() || "idle";
@@ -1371,9 +1487,162 @@ document.getElementById("stop-speak-btn").addEventListener("click", stopSpeaking
 document.getElementById("dextor-orb").addEventListener("click", () => {
   if (currentOrbState() === "speaking") {
     stopSpeaking();
-  } else {
-    document.getElementById("mic-btn").click();
+  } else if (!interviewActive) {
+    enterInterviewMode();
   }
+});
+
+/* Mock interview - clicking the orb takes over the whole screen and starts
+   a growth-marketing-focused mock interview (interview_agent.py). Voice
+   input/output reuse the same recognizer/speak() as the main chat. */
+let interviewActive = false;
+let interviewHistory = [];
+
+function appendInterviewMessage(role, text) {
+  const log = document.getElementById("interview-log");
+  const el = document.createElement("div");
+  el.className = `msg msg-${role}`;
+  el.textContent = text;
+  log.appendChild(el);
+  log.scrollTop = log.scrollHeight;
+  return el;
+}
+function appendInterviewTyping() {
+  const log = document.getElementById("interview-log");
+  const el = document.createElement("div");
+  el.className = "msg msg-agent";
+  el.innerHTML = '<span class="typing-dots"><span></span><span></span><span></span></span>';
+  log.appendChild(el);
+  log.scrollTop = log.scrollHeight;
+  return el;
+}
+
+async function enterInterviewMode() {
+  interviewActive = true;
+  interviewHistory = [];
+  document.getElementById("interview-overlay").classList.remove("hidden");
+  document.getElementById("interview-log").innerHTML = "";
+  document.getElementById("interview-input").value = "";
+  const thinking = appendInterviewTyping();
+  setOrbState("thinking");
+  try {
+    const res = await api("/api/interview", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ history: [] }),
+    });
+    thinking.remove();
+    appendInterviewMessage("agent", res.reply);
+    interviewHistory.push({ role: "assistant", content: res.reply });
+    setOrbState("speaking");
+    speak(res.reply);
+  } catch (e) {
+    thinking.remove();
+    appendInterviewMessage("agent", `Couldn't start the interview: ${e.message}`);
+    setOrbState("idle");
+  }
+}
+
+function exitInterviewMode() {
+  interviewActive = false;
+  stopSpeaking();
+  document.getElementById("interview-overlay").classList.add("hidden");
+}
+
+async function sendInterviewAnswer(text) {
+  if (!text.trim()) return;
+  appendInterviewMessage("user", text);
+  document.getElementById("interview-input").value = "";
+  interviewHistory.push({ role: "user", content: text });
+  const thinking = appendInterviewTyping();
+  setOrbState("thinking");
+  try {
+    const res = await api("/api/interview", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ history: interviewHistory }),
+    });
+    thinking.remove();
+    appendInterviewMessage("agent", res.reply);
+    interviewHistory.push({ role: "assistant", content: res.reply });
+    if (interviewHistory.length > 30) interviewHistory = interviewHistory.slice(-30);
+    setOrbState("speaking");
+    speak(res.reply);
+  } catch (e) {
+    thinking.remove();
+    appendInterviewMessage("agent", `Something went wrong: ${e.message}`);
+    setOrbState("idle");
+  }
+}
+
+document.getElementById("interview-exit").addEventListener("click", exitInterviewMode);
+document.getElementById("interview-stop-btn").addEventListener("click", stopSpeaking);
+document.getElementById("interview-send-btn").addEventListener("click", () => sendInterviewAnswer(document.getElementById("interview-input").value));
+document.getElementById("interview-input").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") sendInterviewAnswer(e.target.value);
+});
+document.getElementById("interview-mic-btn").addEventListener("click", () => {
+  if (!recognizer) return;
+  if (listening) { recognizer.stop(); return; }
+  listening = true;
+  document.getElementById("interview-mic-btn").classList.add("listening");
+  setOrbState("listening");
+  recognizer.start();
+});
+
+/* Focus mode - hides everything but the queue + chat, switches to a red/
+   black theme, and holds a 30-minute focus session with a visible
+   countdown. The same icon exits it; leaving early asks for confirmation
+   (a nudge, not a lock - never trap someone in their own tool). */
+let focusModeActive = false;
+let focusStartTime = null;
+let focusTimerHandle = null;
+const FOCUS_SESSION_MS = 30 * 60 * 1000;
+
+function formatCountdown(ms) {
+  const total = Math.max(0, Math.ceil(ms / 1000));
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+function updateFocusTimer() {
+  const remaining = FOCUS_SESSION_MS - (Date.now() - focusStartTime);
+  const el = document.getElementById("focus-timer");
+  el.textContent = remaining > 0
+    ? `🎯 Focus session — ${formatCountdown(remaining)} left`
+    : "🎯 Focus session — goal reached, keep going or wrap up";
+}
+function enterFocusMode() {
+  focusModeActive = true;
+  focusStartTime = Date.now();
+  document.body.classList.add("focus-mode");
+  const btn = document.getElementById("focus-toggle");
+  btn.classList.add("active");
+  btn.title = "Exit focus mode";
+  document.getElementById("focus-timer").classList.remove("hidden");
+  updateFocusTimer();
+  focusTimerHandle = setInterval(updateFocusTimer, 1000);
+}
+function exitFocusMode() {
+  clearInterval(focusTimerHandle);
+  focusModeActive = false;
+  document.body.classList.remove("focus-mode");
+  const btn = document.getElementById("focus-toggle");
+  btn.classList.remove("active");
+  btn.title = "Enter focus mode";
+  document.getElementById("focus-timer").classList.add("hidden");
+}
+document.getElementById("focus-toggle").addEventListener("click", () => {
+  if (!focusModeActive) {
+    enterFocusMode();
+    return;
+  }
+  const elapsed = Date.now() - focusStartTime;
+  if (elapsed < FOCUS_SESSION_MS) {
+    const remain = formatCountdown(FOCUS_SESSION_MS - elapsed);
+    if (!confirm(`You've been focused for less than 30 minutes (${remain} left). Leave focus mode anyway?`)) return;
+  }
+  exitFocusMode();
 });
 
 /* Funnel bars render at 0% then animate to their real width on the next
@@ -1663,14 +1932,17 @@ function appendTyping() {
   return el;
 }
 
-function addDownloadLink(el, url) {
+function addDownloadLink(el, url, label = "Download") {
   const link = document.createElement("a");
   link.href = url;
   link.download = "";
   link.className = "download-link";
-  link.textContent = "⬇ Download";
+  link.textContent = `⬇ ${label}`;
   el.appendChild(link);
   el.parentElement.scrollTop = el.parentElement.scrollHeight;
+}
+function addDownloadLinks(el, downloads) {
+  (downloads || []).forEach(d => addDownloadLink(el, d.url, d.label));
 }
 
 async function sendChat(text, { fromVoice = false } = {}) {
@@ -1687,7 +1959,7 @@ async function sendChat(text, { fromVoice = false } = {}) {
     });
     thinking.innerHTML = "";
     thinking.textContent = res.reply;
-    if (res.download_url) addDownloadLink(thinking, res.download_url);
+    addDownloadLinks(thinking, res.downloads);
     if (fromVoice) {
       setOrbState("speaking");
       speak(res.reply);
@@ -1726,22 +1998,30 @@ let listening = false;
 if (!SpeechRecognitionImpl) {
   micBtn.disabled = true;
   micBtn.title = "Voice input isn't supported in this browser - try Safari or Chrome, or just type.";
+  document.getElementById("interview-mic-btn").disabled = true;
+  document.getElementById("interview-mic-btn").title = micBtn.title;
 } else {
   recognizer = new SpeechRecognitionImpl();
   recognizer.lang = "en-US";
   recognizer.interimResults = false;
   recognizer.onresult = (e) => {
     const text = e.results[0][0].transcript;
-    sendChat(text, { fromVoice: true });
+    if (interviewActive) {
+      sendInterviewAnswer(text);
+    } else {
+      sendChat(text, { fromVoice: true });
+    }
   };
   recognizer.onend = () => {
     listening = false;
     micBtn.classList.remove("listening");
+    document.getElementById("interview-mic-btn").classList.remove("listening");
     if (currentOrbState() === "listening") setOrbState("idle");
   };
   recognizer.onerror = () => {
     listening = false;
     micBtn.classList.remove("listening");
+    document.getElementById("interview-mic-btn").classList.remove("listening");
     if (currentOrbState() === "listening") setOrbState("idle");
   };
 

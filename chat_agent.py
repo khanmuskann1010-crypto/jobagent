@@ -15,6 +15,7 @@ from datetime import date
 from groq import Groq
 
 import db
+import rejection_insights
 from cover_letter import generate_cover_letter, save_cover_letter
 from cv_tailor import save_tailored_cv, tailor_for_job
 
@@ -149,6 +150,37 @@ TOOLS = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "generate_apply_kit",
+            "description": (
+                "Generate BOTH a tailored CV and a tailored cover letter for one specific job in one "
+                "step, as two downloadable PDFs. Use this when the user asks to put together "
+                "everything, prepare their application, or similar for a job - instead of calling "
+                "tailor_cv and generate_cover_letter separately."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {"job_number": {"type": "integer"}},
+                "required": ["job_number"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "analyze_rejections",
+            "description": (
+                "Look for real patterns across the candidate's rejected applications - a common score "
+                "band, a recurring location/contract mismatch, a gap mentioned repeatedly in the "
+                "original fit reasons. Only call this when they ask something like 'why do I keep "
+                "getting rejected' or 'any pattern in my rejections' - needs at least a few rejections "
+                "to say anything meaningful, and will say so honestly if there aren't enough yet."
+            ),
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
 ]
 
 def _system_prompt() -> str:
@@ -163,11 +195,12 @@ Today's date is {date.today().isoformat()}. Use it as the reference point for an
 the candidate mentions (e.g. "Friday at 2pm").
 
 You have tools to list the job queue, get full details on one job, tailor the candidate's CV for \
-a job, draft a cover letter for a job, update a job's application status, schedule/update an \
-interview date, list applications worth a follow-up nudge, and check overall progress. Use them \
-whenever you need real data - never guess or invent job details, scores, statuses, or dates. Job \
-numbers refer to position in the queue as currently ranked (1 = best fit), matching the numbers \
-shown in the app's UI, so "job 3" and "the third one" mean the same thing.
+a job, draft a cover letter for a job, put together a full apply kit (CV + cover letter together), \
+update a job's application status, schedule/update an interview date, list applications worth a \
+follow-up nudge, look for patterns across rejected applications, and check overall progress. Use \
+them whenever you need real data - never guess or invent job details, scores, statuses, or dates. \
+Job numbers refer to position in the queue as currently ranked (1 = best fit), matching the \
+numbers shown in the app's UI, so "job 3" and "the third one" mean the same thing.
 
 Keep replies conversational and reasonably brief, like a chat message, not a report. Don't dump \
 the full job list unless asked for one."""
@@ -206,8 +239,10 @@ def _job_summary(job: dict, index: int) -> dict:
 
 def _execute_tool(
     name: str, args: dict, jobs: list[dict], client: Groq, cv_text: str | None
-) -> tuple[dict, str | None]:
-    """Returns (result_to_hand_back_to_the_model, download_url_if_any)."""
+) -> tuple[dict, list[dict]]:
+    """Returns (result_to_hand_back_to_the_model, downloads) - downloads is a
+    list of {"label": str, "url": str}, empty when the tool produced no file
+    (a kit produces two at once, most tools produce zero or one)."""
     if name == "list_jobs":
         min_score = args.get("min_score")
         status = args.get("status")
@@ -217,12 +252,12 @@ def _execute_tool(
             if (min_score is None or j["score"] >= min_score)
             and (not status or j["status"] == status)
         ]
-        return {"jobs": rows}, None
+        return {"jobs": rows}, []
 
     if name == "get_job_details":
         n = _coerce_int(args.get("job_number"))
         if not n or not (1 <= n <= len(jobs)):
-            return {"error": f"No job number {n} - the queue has {len(jobs)} jobs."}, None
+            return {"error": f"No job number {n} - the queue has {len(jobs)} jobs."}, []
         job = jobs[n - 1]
         return {
             "job_number": n,
@@ -234,56 +269,59 @@ def _execute_tool(
             "status": job["status"],
             "url": job.get("url", ""),
             "description": (job.get("description") or "")[:1500],
-        }, None
+        }, []
 
     if name == "tailor_cv":
         n = _coerce_int(args.get("job_number"))
         if not n or not (1 <= n <= len(jobs)):
-            return {"error": f"No job number {n} - the queue has {len(jobs)} jobs."}, None
+            return {"error": f"No job number {n} - the queue has {len(jobs)} jobs."}, []
         if not cv_text:
-            return {"error": "No CV on file - the candidate needs to fill in cv.md first."}, None
+            return {"error": "No CV on file - the candidate needs to fill in cv.md first."}, []
         job = jobs[n - 1]
         cv_data = tailor_for_job(client, cv_text, job)
         if "error" in cv_data:
-            return {"error": cv_data["error"]}, None
+            return {"error": cv_data["error"]}, []
         path = save_tailored_cv(job, cv_data)
-        return {"ok": True, "job_number": n, "roles_included": len(cv_data.get("experience", []))}, f"/cv-notes/{path.name}"
+        return (
+            {"ok": True, "job_number": n, "roles_included": len(cv_data.get("experience", []))},
+            [{"label": "Tailored CV", "url": f"/cv-notes/{path.name}"}],
+        )
 
     if name == "update_status":
         n = _coerce_int(args.get("job_number"))
         status = args.get("status")
         if not n or not (1 <= n <= len(jobs)):
-            return {"error": f"No job number {n} - the queue has {len(jobs)} jobs."}, None
+            return {"error": f"No job number {n} - the queue has {len(jobs)} jobs."}, []
         if status not in db.STATUSES:
-            return {"error": f"status must be one of {db.STATUSES}"}, None
+            return {"error": f"status must be one of {db.STATUSES}"}, []
         job = jobs[n - 1]
         db.update_status(job["source"], job["id"], status)
-        return {"ok": True, "job_number": n, "status": status}, None
+        return {"ok": True, "job_number": n, "status": status}, []
 
     if name == "get_progress":
-        return db.get_progress_stats(), None
+        return db.get_progress_stats(), []
 
     if name == "generate_cover_letter":
         n = _coerce_int(args.get("job_number"))
         if not n or not (1 <= n <= len(jobs)):
-            return {"error": f"No job number {n} - the queue has {len(jobs)} jobs."}, None
+            return {"error": f"No job number {n} - the queue has {len(jobs)} jobs."}, []
         if not cv_text:
-            return {"error": "No CV on file - the candidate needs to fill in cv.md first."}, None
+            return {"error": "No CV on file - the candidate needs to fill in cv.md first."}, []
         job = jobs[n - 1]
         letter = generate_cover_letter(client, cv_text, job)
         if "error" in letter:
-            return {"error": letter["error"]}, None
+            return {"error": letter["error"]}, []
         path = save_cover_letter(job, letter)
-        return {"ok": True, "job_number": n}, f"/cv-notes/{path.name}"
+        return {"ok": True, "job_number": n}, [{"label": "Cover letter", "url": f"/cv-notes/{path.name}"}]
 
     if name == "schedule_interview":
         n = _coerce_int(args.get("job_number"))
         if not n or not (1 <= n <= len(jobs)):
-            return {"error": f"No job number {n} - the queue has {len(jobs)} jobs."}, None
+            return {"error": f"No job number {n} - the queue has {len(jobs)} jobs."}, []
         job = jobs[n - 1]
         when = args.get("when") or None
         db.set_interview_datetime(job["source"], job["id"], when)
-        return {"ok": True, "job_number": n, "interview_at": when}, None
+        return {"ok": True, "job_number": n, "interview_at": when}, []
 
     if name == "get_follow_ups":
         days = _coerce_int(args.get("days"), default=7)
@@ -294,9 +332,39 @@ def _execute_tool(
                 {**_job_summary(j, by_key.get((j["source"], j["id"]), 0)), "status_updated_at": j["status_updated_at"]}
                 for j in stale
             ]
-        }, None
+        }, []
 
-    return {"error": f"unknown tool {name}"}, None
+    if name == "generate_apply_kit":
+        n = _coerce_int(args.get("job_number"))
+        if not n or not (1 <= n <= len(jobs)):
+            return {"error": f"No job number {n} - the queue has {len(jobs)} jobs."}, []
+        if not cv_text:
+            return {"error": "No CV on file - the candidate needs to fill in cv.md first."}, []
+        job = jobs[n - 1]
+        downloads = []
+        generated = []
+
+        cv_data = tailor_for_job(client, cv_text, job)
+        if "error" not in cv_data:
+            path = save_tailored_cv(job, cv_data)
+            downloads.append({"label": "Tailored CV", "url": f"/cv-notes/{path.name}"})
+            generated.append("CV")
+
+        letter = generate_cover_letter(client, cv_text, job)
+        if "error" not in letter:
+            path = save_cover_letter(job, letter)
+            downloads.append({"label": "Cover letter", "url": f"/cv-notes/{path.name}"})
+            generated.append("cover letter")
+
+        if not downloads:
+            return {"error": "Couldn't generate the apply kit - both the CV and cover letter generation failed."}, []
+        return {"ok": True, "job_number": n, "generated": generated}, downloads
+
+    if name == "analyze_rejections":
+        rejected = [j for j in jobs if j["status"] == "rejected"]
+        return rejection_insights.analyze_rejections(client, rejected), []
+
+    return {"error": f"unknown tool {name}"}, []
 
 
 def chat(
@@ -305,17 +373,18 @@ def chat(
     jobs: list[dict],
     cv_text: str | None,
     max_rounds: int = 5,
-) -> tuple[str, str | None]:
+) -> tuple[str, list[dict]]:
     """history is [{"role": "user"|"assistant", "content": str}, ...] - prior turns,
-    NOT including a system prompt. Returns (reply_text, download_url_or_None)."""
+    NOT including a system prompt. Returns (reply_text, downloads) - downloads is a
+    list of {"label": str, "url": str}, possibly more than one (e.g. an apply kit)."""
     if client is None:
         return (
             "I'd love to chat, but my Groq API key isn't set up yet — add GROQ_API_KEY to your .env and I'll be ready.",
-            None,
+            [],
         )
 
     messages = [{"role": "system", "content": _system_prompt()}] + history
-    download_url = None
+    downloads = []
 
     for _ in range(max_rounds):
         response = None
@@ -338,12 +407,12 @@ def chat(
             except Exception as e:
                 last_error = e
         if response is None:
-            return f"Something went wrong on my end: {last_error}", download_url
+            return f"Something went wrong on my end: {last_error}", downloads
 
         msg = response.choices[0].message
 
         if not msg.tool_calls:
-            return msg.content or "...", download_url
+            return msg.content or "...", downloads
 
         messages.append(
             {
@@ -366,15 +435,14 @@ def chat(
             except json.JSONDecodeError:
                 args = {}
             try:
-                result, dl = _execute_tool(tc.function.name, args, jobs, client, cv_text)
+                result, dls = _execute_tool(tc.function.name, args, jobs, client, cv_text)
             except Exception as e:
                 # A tool crashing (bad/unexpected args, a transient DB or
                 # PDF error) shouldn't take down the whole conversation -
                 # hand the model the error like any other tool result so it
                 # can explain or retry instead of the request 500ing.
-                result, dl = {"error": f"{tc.function.name} failed: {e}"}, None
-            if dl:
-                download_url = dl
+                result, dls = {"error": f"{tc.function.name} failed: {e}"}, []
+            downloads.extend(dls)
             messages.append(
                 {
                     "role": "tool",
@@ -383,4 +451,4 @@ def chat(
                 }
             )
 
-    return "I got a bit stuck working through that — could you try rephrasing?", download_url
+    return "I got a bit stuck working through that — could you try rephrasing?", downloads
