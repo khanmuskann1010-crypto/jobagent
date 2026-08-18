@@ -173,6 +173,25 @@ Keep replies conversational and reasonably brief, like a chat message, not a rep
 the full job list unless asked for one."""
 
 
+def _coerce_int(value, default=None):
+    """Groq's tool-calling isn't always strict about JSON schema types (it's a
+    small, open-weight model) - job_number/days sometimes arrive as "3"
+    instead of 3. Accept either rather than letting a bare comparison like
+    `1 <= n <= len(jobs)` crash the whole request with a TypeError."""
+    if isinstance(value, bool):
+        return default
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    if isinstance(value, str):
+        try:
+            return int(value.strip())
+        except ValueError:
+            return default
+    return default
+
+
 def _job_summary(job: dict, index: int) -> dict:
     return {
         "job_number": index,
@@ -201,7 +220,7 @@ def _execute_tool(
         return {"jobs": rows}, None
 
     if name == "get_job_details":
-        n = args.get("job_number")
+        n = _coerce_int(args.get("job_number"))
         if not n or not (1 <= n <= len(jobs)):
             return {"error": f"No job number {n} - the queue has {len(jobs)} jobs."}, None
         job = jobs[n - 1]
@@ -218,7 +237,7 @@ def _execute_tool(
         }, None
 
     if name == "tailor_cv":
-        n = args.get("job_number")
+        n = _coerce_int(args.get("job_number"))
         if not n or not (1 <= n <= len(jobs)):
             return {"error": f"No job number {n} - the queue has {len(jobs)} jobs."}, None
         if not cv_text:
@@ -231,7 +250,7 @@ def _execute_tool(
         return {"ok": True, "job_number": n, "roles_included": len(cv_data.get("experience", []))}, f"/cv-notes/{path.name}"
 
     if name == "update_status":
-        n = args.get("job_number")
+        n = _coerce_int(args.get("job_number"))
         status = args.get("status")
         if not n or not (1 <= n <= len(jobs)):
             return {"error": f"No job number {n} - the queue has {len(jobs)} jobs."}, None
@@ -245,7 +264,7 @@ def _execute_tool(
         return db.get_progress_stats(), None
 
     if name == "generate_cover_letter":
-        n = args.get("job_number")
+        n = _coerce_int(args.get("job_number"))
         if not n or not (1 <= n <= len(jobs)):
             return {"error": f"No job number {n} - the queue has {len(jobs)} jobs."}, None
         if not cv_text:
@@ -258,7 +277,7 @@ def _execute_tool(
         return {"ok": True, "job_number": n}, f"/cv-notes/{path.name}"
 
     if name == "schedule_interview":
-        n = args.get("job_number")
+        n = _coerce_int(args.get("job_number"))
         if not n or not (1 <= n <= len(jobs)):
             return {"error": f"No job number {n} - the queue has {len(jobs)} jobs."}, None
         job = jobs[n - 1]
@@ -267,7 +286,7 @@ def _execute_tool(
         return {"ok": True, "job_number": n, "interview_at": when}, None
 
     if name == "get_follow_ups":
-        days = args.get("days") or 7
+        days = _coerce_int(args.get("days"), default=7)
         stale = db.get_stale_applications(days=days)
         by_key = {(j["source"], j["id"]): i for i, j in enumerate(jobs, start=1)}
         return {
@@ -299,16 +318,27 @@ def chat(
     download_url = None
 
     for _ in range(max_rounds):
-        try:
-            response = client.chat.completions.create(
-                model=MODEL,
-                messages=messages,
-                tools=TOOLS,
-                max_tokens=1200,
-                reasoning_effort="low",
-            )
-        except Exception as e:
-            return f"Something went wrong on my end: {e}", download_url
+        response = None
+        last_error = None
+        # openai/gpt-oss-120b is small and occasionally emits a tool call
+        # Groq's own schema validation rejects outright (400 "Tool call
+        # validation failed") - that's often not reproducible, so one retry
+        # before giving up on this turn is worth it rather than surfacing
+        # the raw SDK error.
+        for attempt in range(2):
+            try:
+                response = client.chat.completions.create(
+                    model=MODEL,
+                    messages=messages,
+                    tools=TOOLS,
+                    max_tokens=1200,
+                    reasoning_effort="low",
+                )
+                break
+            except Exception as e:
+                last_error = e
+        if response is None:
+            return f"Something went wrong on my end: {last_error}", download_url
 
         msg = response.choices[0].message
 
@@ -335,7 +365,14 @@ def chat(
                 args = json.loads(tc.function.arguments or "{}")
             except json.JSONDecodeError:
                 args = {}
-            result, dl = _execute_tool(tc.function.name, args, jobs, client, cv_text)
+            try:
+                result, dl = _execute_tool(tc.function.name, args, jobs, client, cv_text)
+            except Exception as e:
+                # A tool crashing (bad/unexpected args, a transient DB or
+                # PDF error) shouldn't take down the whole conversation -
+                # hand the model the error like any other tool result so it
+                # can explain or retry instead of the request 500ing.
+                result, dl = {"error": f"{tc.function.name} failed: {e}"}, None
             if dl:
                 download_url = dl
             messages.append(

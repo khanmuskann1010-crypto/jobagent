@@ -206,7 +206,13 @@ def chat(body: ChatMessage):
         client = None
 
     history = body.history + [{"role": "user", "content": body.message}]
-    reply, download_url = chat_agent.chat(client, history, jobs, cv_text)
+    try:
+        reply, download_url = chat_agent.chat(client, history, jobs, cv_text)
+    except Exception as e:
+        # Belt-and-suspenders: chat_agent.chat() already handles LLM/tool
+        # errors gracefully, but a genuinely unexpected bug here shouldn't
+        # 500 the request - the chat panel should always get a reply to show.
+        return {"reply": f"Something went wrong on my end: {e}", "download_url": None}
     return {"reply": reply, "download_url": download_url}
 
 
