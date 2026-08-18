@@ -22,7 +22,7 @@ from pydantic import BaseModel
 import db
 from groq import Groq
 from cv_tailor import OUTPUT_DIR as CV_SUGGESTIONS_DIR
-from cv_tailor import load_cv, save_suggestions, tailor_for_job
+from cv_tailor import load_cv, save_tailored_cv, tailor_for_job
 from voice_agent import handle_command, parse_command
 
 load_dotenv()
@@ -105,7 +105,7 @@ def tailor_cv(source: str, external_id: str):
     suggestions = tailor_for_job(client, cv_text, job)
     if "error" in suggestions:
         raise HTTPException(502, suggestions["error"])
-    path = save_suggestions(job, suggestions)
+    path = save_tailored_cv(job, suggestions)
     return {**suggestions, "download_url": f"/cv-notes/{path.name}"}
 
 

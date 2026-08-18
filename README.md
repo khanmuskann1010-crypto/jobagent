@@ -77,21 +77,24 @@ Each run:
 ## CV tailoring
 
 `cv_tailor.py` sends your CV (`cv.md`) plus one job listing to the LLM and
-gets back the job's top requirements, how your CV maps to each, 2-4
-tailored bullet suggestions, and a tailored opening line for outreach —
-written as a PDF to `cv_suggestions/<source>_<id>_<company>.pdf`. It's used
+gets back a tailored version of your actual CV — same roles, companies, and
+dates, with the summary/skills/bullets re-emphasized and reworded for that
+job — rendered as a one-page PDF at
+`cv_suggestions/<source>_<id>_<company>_CV.pdf`. The prompt explicitly
+forbids inventing companies, titles, dates, or achievements; it can only
+reorder, re-emphasize, and reword what's already in your real CV. It's used
 by voice mode's "tailor" command and the dashboard's download link; you can
 also call it directly:
 
 ```python
 from groq import Groq
-from cv_tailor import load_cv, tailor_for_job, save_suggestions
+from cv_tailor import load_cv, tailor_for_job, save_tailored_cv
 
 client = Groq()
 cv_text = load_cv()
 job = {...}  # a listing dict, e.g. from db.get_all_jobs()
-suggestions = tailor_for_job(client, cv_text, job)
-save_suggestions(job, suggestions, index=1)
+cv_data = tailor_for_job(client, cv_text, job)
+save_tailored_cv(job, cv_data)
 ```
 
 ## Voice interface

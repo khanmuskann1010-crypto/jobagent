@@ -28,7 +28,7 @@ from dotenv import load_dotenv
 from groq import Groq
 
 import db
-from cv_tailor import load_cv, save_suggestions, tailor_for_job
+from cv_tailor import load_cv, save_tailored_cv, tailor_for_job
 
 JOB_NUMBER_RE = re.compile(r"\b(?:job|listing|number)\s*(\d+)\b")
 
@@ -112,15 +112,15 @@ def handle_command(
         if client is None:
             return "I'd love to help with that, but my Groq API key isn't set up yet — add GROQ_API_KEY to your .env and I'll be ready.", None
         job = jobs[job_number - 1]
-        suggestions = tailor_for_job(client, cv_text, job)
-        if "error" in suggestions:
-            return f"That one didn't go through cleanly: {suggestions['error']}", None
-        path = save_suggestions(job, suggestions)
-        top = ", ".join(suggestions.get("top_requirements", [])[:3])
-        n_bullets = len(suggestions.get("bullet_suggestions", []))
+        cv_data = tailor_for_job(client, cv_text, job)
+        if "error" in cv_data:
+            return f"That one didn't go through cleanly: {cv_data['error']}", None
+        path = save_tailored_cv(job, cv_data)
+        n_roles = len(cv_data.get("experience", []))
         return (
-            f"Done! For job {job_number}, the things that matter most are {top}. "
-            f"I've written {_plural(n_bullets, 'tailored bullet suggestion')} and an opening line for you — you can download it below."
+            f"Done! I've tailored your CV for job {job_number} — rewrote the summary and the bullets "
+            f"across {_plural(n_roles, 'role')} to emphasize what this one's actually looking for. "
+            "You can download it below."
         ), path.name
 
     return "Sorry, I didn't quite catch that — try something like 'what's new', 'tell me about job 2', or 'tailor my CV for job 2'.", None
