@@ -134,31 +134,53 @@ Same commands, typed instead of spoken, printed instead of read aloud.
 ## Dashboard
 
 A local web app (FastAPI backend + a single-page frontend, dark theme only)
-named Dextor — the job queue, a real conversational assistant, an interview
-calendar, an applied-jobs tracker, and a tabbed Insights/LinkedIn/Inbox
-panel, built around three columns:
+named Dextor — the job queue, a real conversational assistant, a mock
+interview mode, an interview calendar, an applied-jobs tracker, and a
+tabbed Insights/LinkedIn/Inbox panel, built around three columns:
 
-- **Left** — the job queue (search/filter box on top, matches title,
-  company, location, and salary; ranked by fit) → a tabbed panel switching
-  between **Insights** (status funnel, score distribution, jobs by source,
-  an applications-over-time trend), **LinkedIn** (quick links to your
-  profile/messages/posting plus a notes scratchpad saved in your browser),
-  and **Inbox** (recent Gmail messages, with job-relevant ones flagged by
-  the same LLM that scores listings)
-- **Center** — Dextor, a genuine conversational agent (`chat_agent.py`),
-  not a fixed command parser. Ask it anything about your search - it
-  decides for itself when to look up a job, pull full details, tailor your
-  CV, draft a cover letter, mark something applied, schedule an interview,
-  check who needs a follow-up, or check progress, via tool calls, the same
-  way an LLM agent works. Typed or spoken (your browser's built-in speech
-  recognition - Safari or Chrome - no extra install or paid API); it only
-  speaks a reply back when you used the mic, never for typed messages.
-  Clicking a job in the queue asks about it directly.
-- **Right** — your best current match (highest-scoring listing you haven't
-  acted on) with a "Mark applied" button → an interview **Calendar**
-  (compact month view + your next few interviews - set a date by asking
-  Dextor, or with the 📅 button on an applied row) → the applied-jobs
-  tracker (with a CSV export button)
+- **Left** — your applied-jobs tracker (with a CSV export button) → a
+  tabbed panel switching between **Insights** (status funnel, score
+  distribution, jobs by source, an applications-over-time trend),
+  **LinkedIn** (quick links to your profile/messages/posting plus a notes
+  scratchpad saved in your browser), and **Inbox** (recent Gmail messages,
+  with job-relevant ones flagged by the same LLM that scores listings) →
+  your best current match (highest-scoring listing you haven't acted on)
+  with a "Mark applied" button
+- **Center** — the Dextor orb (click it to start a mock interview - see
+  below; it also reacts visually while thinking/listening/speaking) over
+  the job queue (search/filter box on top, matches title, company,
+  location, and salary; ranked by fit). Clicking a listing both asks
+  Dextor about it and opens the real posting in a new tab.
+- **Right** — an interview **Calendar** (compact month view + your next
+  few interviews - set a date by asking Dextor, or with the 📅 button on
+  an applied row) → Dextor's chat panel. A genuine conversational agent
+  (`chat_agent.py`), not a fixed command parser - ask it anything about
+  your search, it decides for itself when to look up a job, tailor your
+  CV, draft a cover letter, put together a full apply kit (CV + cover
+  letter together), mark something applied, schedule an interview, check
+  who needs a follow-up, look for patterns across your rejections, or
+  check progress, via tool calls. Typed or spoken (your browser's
+  built-in speech recognition - Safari or Chrome - no extra install or
+  paid API); it only speaks a reply back when you used the mic, and a
+  stop button appears while it's talking so you can cut it off.
+
+### Mock interview
+
+Click the Dextor orb (top-center) while it's idle to start a mock
+interview - it takes over the full screen, asks one question at a time
+(mixing background, scenario/case, metrics, and behavioral questions),
+gives brief honest feedback after each answer, and speaks every question
+aloud automatically. Scoped specifically to growth marketing interviews -
+this app screens listings for that role family, so the questions do too
+(`interview_agent.py`, a separate conversation loop from the main chat,
+grounded in your real CV). Exit with the ✕, same as anywhere else in the app.
+
+### Focus mode
+
+The 🎯 icon in the header hides everything but the job queue and chat
+(plus the calendar), swaps in a red/black theme, and runs a 30-minute
+countdown. The same icon exits it - leaving before 30 minutes asks you to
+confirm, but never locks you in.
 
 Other conveniences: a full screen toggle and an opt-in desktop-notification
 bell for strong (8+/10) new matches, both top right; a slim alert banner
@@ -224,12 +246,15 @@ identify a listing (e.g. `indeed`/`JOBSEARCH_145`).
 | GET | `/api/progress` | `{total_scored, by_status: {...}}` counts for the funnel |
 | POST | `/api/jobs/{source}/{external_id}/tailor-cv` | Runs `cv_tailor.py` against this listing, returns the suggestions |
 | POST | `/api/jobs/{source}/{external_id}/cover-letter` | Runs `cover_letter.py` against this listing, returns the letter |
+| POST | `/api/jobs/{source}/{external_id}/apply-kit` | Tailored CV + cover letter together, returns `{downloads: [{label, url}, ...]}` |
 | PATCH | `/api/jobs/{source}/{external_id}/interview` | Body `{"when": "2026-08-22T14:00:00"}` (or `null` to clear) |
 | GET | `/api/follow-ups?days=7` | Applications with no status update in `days` - worth a nudge |
 | GET | `/api/calendar` | Jobs with a scheduled interview, soonest first |
 | GET | `/api/progress/trend?days=30` | `{dates, series: {applied, interviewing, rejected}}` cumulative counts for the trend chart |
+| GET | `/api/rejections/analysis` | Pattern analysis across rejected applications (`rejection_insights.py`), needs 3+ rejections |
 | GET | `/api/export/applied.csv` | CSV download of your applied/interviewing/rejected jobs |
-| POST | `/api/chat` | Body `{"message": "...", "history": [...]}` — free-form chat with Dextor (`chat_agent.py`), returns `{reply, download_url}` |
+| POST | `/api/chat` | Body `{"message": "...", "history": [...]}` — free-form chat with Dextor (`chat_agent.py`), returns `{reply, downloads: [{label, url}, ...]}` |
+| POST | `/api/interview` | Body `{"history": [...]}` — drives the mock-interview overlay (`interview_agent.py`); empty history starts a new session |
 | GET | `/api/gmail/status` | `{connected, credentials_configured}` |
 | GET | `/api/gmail/connect` | Redirects to Google's consent screen |
 | GET | `/api/gmail/callback` | OAuth redirect target — saves the token, then redirects back to `/` |
@@ -282,6 +307,8 @@ job-search-agent/
 ├── voice_agent.py        # CLI voice interface
 ├── api.py                # dashboard backend (FastAPI)
 ├── chat_agent.py          # tool-using conversational agent for the dashboard chat
+├── interview_agent.py     # mock-interview conversation loop (growth marketing)
+├── rejection_insights.py  # pattern analysis across rejected applications
 ├── gmail_agent.py         # Gmail OAuth + inbox fetch/importance-tagging for the Inbox panel
 ├── frontend/index.html   # dashboard frontend
 └── main.py              # orchestrator — run this
