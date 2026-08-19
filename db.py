@@ -53,6 +53,7 @@ _COLUMNS = (
     "source", "external_id", "title", "company", "location", "description",
     "contract_type", "url", "date_posted", "score", "reason", "first_seen_at",
     "status", "status_updated_at", "salary", "interview_at",
+    "link_status", "link_checked_at",
 )
 
 
@@ -79,6 +80,10 @@ def connect(db_path: Path = DB_PATH):
         conn.execute("ALTER TABLE seen_jobs ADD COLUMN salary TEXT")
     if "interview_at" not in existing_cols:
         conn.execute("ALTER TABLE seen_jobs ADD COLUMN interview_at TEXT")
+    if "link_status" not in existing_cols:
+        conn.execute("ALTER TABLE seen_jobs ADD COLUMN link_status TEXT NOT NULL DEFAULT 'unknown'")
+    if "link_checked_at" not in existing_cols:
+        conn.execute("ALTER TABLE seen_jobs ADD COLUMN link_checked_at TEXT")
     try:
         yield conn
         conn.commit()
@@ -219,6 +224,33 @@ def get_upcoming_interviews(db_path: Path = DB_PATH) -> list[dict]:
                 ORDER BY interview_at ASC"""
         ).fetchall()
     return [_row_to_dict(r) for r in rows]
+
+
+def get_jobs_to_recheck(limit: int = 40, stale_after_hours: int = 72, db_path: Path = DB_PATH) -> list[dict]:
+    """Active listings (still 'new' or 'applied'/'interviewing') whose live/
+    dead link status hasn't been checked recently - oldest-checked first, so
+    a slow trickle of daily checks eventually covers the whole queue without
+    hammering every job board on every run."""
+    cutoff = (datetime.now(timezone.utc) - timedelta(hours=stale_after_hours)).isoformat()
+    with connect(db_path) as conn:
+        rows = conn.execute(
+            f"""SELECT {', '.join(_COLUMNS)} FROM seen_jobs
+                WHERE status IN ('new', 'applied', 'interviewing')
+                  AND (link_checked_at IS NULL OR link_checked_at <= ?)
+                ORDER BY link_checked_at IS NOT NULL, link_checked_at ASC
+                LIMIT ?""",
+            (cutoff, limit),
+        ).fetchall()
+    return [_row_to_dict(r) for r in rows]
+
+
+def set_link_status(source: str, external_id: str, status: str, db_path: Path = DB_PATH) -> None:
+    now = datetime.now(timezone.utc).isoformat()
+    with connect(db_path) as conn:
+        conn.execute(
+            "UPDATE seen_jobs SET link_status = ?, link_checked_at = ? WHERE source = ? AND external_id = ?",
+            (status, now, source, external_id),
+        )
 
 
 def get_meta(key: str, db_path: Path = DB_PATH) -> str | None:

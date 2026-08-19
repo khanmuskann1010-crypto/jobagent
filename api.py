@@ -28,6 +28,7 @@ import chat_agent
 import db
 import groq_usage
 import interview_agent
+import link_checker
 import main as fetch_main
 import rejection_insights
 from groq import Groq
@@ -40,25 +41,28 @@ CV_SUGGESTIONS_DIR.mkdir(exist_ok=True)  # StaticFiles needs the dir to exist at
 db.auto_archive_stale_jobs()  # quietly tidy up on every server start, same housekeeping main.py does
 
 AUTO_FETCH_META_KEY = "last_auto_fetch_date"
-_fetch_state = {"status": "idle", "new": 0, "error": None}  # idle | running | done | error
+_fetch_state = {"status": "idle", "new": 0, "dead": 0, "error": None}  # idle | running | done | error
 
 
 def _run_auto_fetch():
     """Runs once per calendar day, the first time the server starts that
     day - not on every --reload restart, which would otherwise burn through
     Adzuna/France Travail calls and the Groq daily token budget on every
-    file save during development."""
+    file save during development. Also sweeps a batch of already-seen
+    listings to flag ones that have been pulled from their platform (see
+    link_checker.py), so the queue doesn't keep pointing you at dead links."""
     global _fetch_state
     today = date.today().isoformat()
     if db.get_meta(AUTO_FETCH_META_KEY) == today:
         return
-    _fetch_state = {"status": "running", "new": 0, "error": None}
+    _fetch_state = {"status": "running", "new": 0, "dead": 0, "error": None}
     try:
         result = fetch_main.run_fetch()
+        dead = link_checker.check_listings(db.get_jobs_to_recheck())
         db.set_meta(AUTO_FETCH_META_KEY, today)
-        _fetch_state = {"status": "done", "new": result["new"], "error": None}
+        _fetch_state = {"status": "done", "new": result["new"], "dead": dead, "error": None}
     except Exception as e:
-        _fetch_state = {"status": "error", "new": 0, "error": str(e)}
+        _fetch_state = {"status": "error", "new": 0, "dead": 0, "error": str(e)}
 
 try:
     import gmail_agent

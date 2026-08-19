@@ -1,0 +1,13 @@
+{
+  "name": "Dextor job search agent",
+  "image": "mcr.microsoft.com/devcontainers/python:1-3.12-bullseye",
+  "postCreateCommand": "pip install -r requirements.txt -r requirements-api.txt -r requirements-gmail.txt",
+  "postStartCommand": "bash .devcontainer/start-server.sh",
+  "forwardPorts": [8000],
+  "portsAttributes": {
+    "8000": {
+      "label": "Dextor dashboard",
+      "onAutoForward": "notify"
+    }
+  }
+}

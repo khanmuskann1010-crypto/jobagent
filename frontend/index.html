@@ -757,6 +757,21 @@
     color: #fff;
     box-shadow: 0 4px 14px var(--emerald-wash);
   }
+  .pill-btn.mini { font-size: 0.7rem; padding: 0.32rem 0.65rem; }
+  .pill-btn:disabled { opacity: 0.55; cursor: default; transform: none; }
+  .job-card-actions { display: flex; gap: 0.4rem; margin-top: 0.55rem; flex-wrap: wrap; position: relative; }
+  .job-card .kit-links { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.4rem; position: relative; }
+  .job-card .kit-links .download-link { margin-top: 0; padding: 0.3rem 0.65rem; font-size: 0.7rem; }
+  .link-dead-badge {
+    display: inline-block;
+    margin-left: 0.4rem;
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.66rem;
+    font-weight: 600;
+    background: var(--danger-wash);
+    color: var(--danger);
+  }
 
   /* Calendar panel */
   .calendar-panel { flex: 0 0 auto; max-height: 300px; overflow-y: auto; }
@@ -1271,15 +1286,26 @@ function renderJobList() {
     card.className = `job-card ${tierClass(j.score)}` + (selectedJob === jobKey(j) ? " selected" : "");
     const statusBadge = j.status !== "new"
       ? `<span class="status-badge status-${j.status}">${j.status}</span>` : "";
+    const deadBadge = j.link_status === "dead"
+      ? `<span class="link-dead-badge" title="This listing's link returned a not-found response">⚠ may be removed</span>` : "";
     const salaryLine = j.salary ? `<p class="meta salary">💶 ${escapeHtml(j.salary)}</p>` : "";
+    const kit = applyKits[jobKey(j)];
+    const kitLinks = kit
+      ? `<div class="kit-links">${kit.map(d => `<a href="${d.url}" download class="download-link">⬇ ${d.label}</a>`).join("")}</div>` : "";
+    const showMarkApplied = j.status === "new";
     card.innerHTML = `
       <div class="job-card-top">
         <span class="score-chip mono">#${i + 1} · ${j.score}/10</span>
         <span class="source-tag">${j.source.replace("_", " ")}</span>
       </div>
-      <h3>${escapeHtml(j.title)}${statusBadge}</h3>
+      <h3>${escapeHtml(j.title)}${statusBadge}${deadBadge}</h3>
       <p class="meta">${escapeHtml(j.company)} — ${escapeHtml(j.location)}</p>
       ${salaryLine}
+      <div class="job-card-actions">
+        <button class="pill-btn primary mini" data-action="apply">🚀 Apply</button>
+        ${showMarkApplied ? `<button class="pill-btn mini" data-action="mark-applied">✓ Applied</button>` : ""}
+      </div>
+      ${kitLinks}
     `;
     card.addEventListener("click", () => {
       selectedJob = jobKey(j);
@@ -1287,9 +1313,43 @@ function renderJobList() {
       askAboutJob(i + 1);
       if (j.url) window.open(j.url, "_blank", "noopener");
     });
+    card.querySelector('[data-action="apply"]').addEventListener("click", (e) => {
+      e.stopPropagation();
+      applyToJob(j, e.currentTarget);
+    });
+    const markBtn = card.querySelector('[data-action="mark-applied"]');
+    if (markBtn) {
+      markBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        setStatus(j, "applied");
+      });
+    }
     attachTilt(card, 4);
     list.appendChild(card);
   });
+}
+
+/* One-click apply: generates the tailored CV + cover letter, opens the real
+   posting so you can actually submit it, and leaves the download links on
+   the card - no more bouncing between the chat panel and separate tabs for
+   each listing. Doesn't touch application status; that's still an explicit
+   "Applied" click, since kit generation succeeding isn't the same as having
+   actually applied. */
+const applyKits = {};
+async function applyToJob(j, btn) {
+  btn.disabled = true;
+  btn.textContent = "Preparing…";
+  try {
+    const res = await api(`/api/jobs/${j.source}/${j.id}/apply-kit`, { method: "POST" });
+    applyKits[jobKey(j)] = res.downloads;
+    if (j.url) window.open(j.url, "_blank", "noopener");
+    showToast("CV + cover letter ready — links are on the card. Apply on the tab that opened, then mark it Applied.");
+    renderJobList();
+  } catch (e) {
+    showToast(`Couldn't prepare your apply kit: ${e.message}`, "error");
+    btn.disabled = false;
+    btn.textContent = "🚀 Apply";
+  }
 }
 
 function renderBestMatch(job) {

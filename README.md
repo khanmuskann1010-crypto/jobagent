@@ -153,7 +153,15 @@ tabbed Insights/LinkedIn/Inbox panel, built around three columns:
   Dextor about it and opens the real posting in a new tab. The server
   automatically runs a fetch the first time it starts each day (a pulsing
   "fetching today's listings…" pill appears next to the job count while it
-  runs) — no need to manually run `python main.py` every morning.
+  runs) — no need to manually run `python main.py` every morning. Every
+  card has a one-click **🚀 Apply** button (generates the tailored CV +
+  cover letter, opens the real posting, and leaves the download links right
+  on the card) and a **✓ Applied** button, so applying to something doesn't
+  mean bouncing between the chat panel and separate tabs. That same daily
+  auto-fetch also quietly rechecks a batch of already-seen listings' links
+  and flags any that 404 with a "⚠ may be removed" badge (conservatively -
+  a blocked/rate-limited check counts as unknown, not dead, so you won't
+  see false alarms from sites that reject bot-like requests).
 - **Right** — an interview **Calendar** (compact month view + your next
   few interviews - set a date by asking Dextor, or with the 📅 button on
   an applied row) → Dextor's chat panel. A genuine conversational agent
@@ -263,7 +271,7 @@ identify a listing (e.g. `indeed`/`JOBSEARCH_145`).
 | GET | `/api/best-match` | Highest-scoring job still at status `new` |
 | GET | `/api/progress` | `{total_scored, by_status: {...}}` counts for the funnel |
 | GET | `/api/groq-usage` | `{date, used, limit, remaining, pct}` - today's Groq token usage, tracked by this app (see below) |
-| GET | `/api/fetch-status` | `{status, new, error}` - state of the once-a-day automatic startup fetch (`idle`/`running`/`done`/`error`) |
+| GET | `/api/fetch-status` | `{status, new, dead, error}` - state of the once-a-day automatic startup fetch (`idle`/`running`/`done`/`error`); `dead` is how many already-seen listings' links came back not-found in that day's link check |
 | POST | `/api/jobs/{source}/{external_id}/tailor-cv` | Runs `cv_tailor.py` against this listing, returns the suggestions |
 | POST | `/api/jobs/{source}/{external_id}/cover-letter` | Runs `cover_letter.py` against this listing, returns the letter |
 | POST | `/api/jobs/{source}/{external_id}/apply-kit` | Tailored CV + cover letter together, returns `{downloads: [{label, url}, ...]}` |
@@ -285,6 +293,23 @@ Example:
 curl -X PATCH localhost:8000/api/jobs/indeed/JOBSEARCH_145/status \
   -H "Content-Type: application/json" -d '{"status":"applied"}'
 ```
+
+## Auto-starting the dashboard in Codespaces (optional)
+
+By default you still start the server yourself each time
+(`uvicorn api:app --reload`). `.devcontainer/devcontainer.json` +
+`.devcontainer/start-server.sh` let the Codespace start it for you instead -
+open the Codespace, wait a few seconds, and the dashboard is already running
+(bound to `0.0.0.0` so the forwarded URL works) with today's auto-fetch
+already kicked off.
+
+**This only takes effect after a container rebuild** - existing Codespaces
+don't pick up devcontainer changes automatically. In VS Code (or the
+Codespace's browser editor): Command Palette (`Ctrl/Cmd+Shift+P`) →
+"Codespaces: Rebuild Container". It takes a few minutes. If anything looks
+off afterwards, the server's own log is at `/tmp/dextor-server.log` inside
+the container, and worst case you can delete `.devcontainer/` and rebuild
+again to go back to starting it manually.
 
 ## Running on a schedule
 
@@ -318,7 +343,9 @@ job-search-agent/
 ├── run_daily.sh         # cron wrapper
 ├── fetch_jobs.py        # France Travail API client
 ├── adzuna.py            # Adzuna API client
+├── wttj.py               # Welcome to the Jungle client (WIP, see below)
 ├── indeed_source.py      # parses Claude's Indeed connector output into the common listing schema
+├── link_checker.py       # flags listings whose link has gone dead (404/410)
 ├── db.py                # SQLite store: dedup history + application status (jobs.db, tracked in git)
 ├── digest.py            # styled HTML digest generator
 ├── score_jobs.py        # LLM scoring logic (Groq by default)
@@ -333,5 +360,6 @@ job-search-agent/
 ├── groq_usage.py          # local daily token-usage tracker for the usage toggle
 ├── gmail_agent.py         # Gmail OAuth + inbox fetch/importance-tagging for the Inbox panel
 ├── frontend/index.html   # dashboard frontend
+├── .devcontainer/        # optional: Codespaces auto-start (see above)
 └── main.py              # orchestrator — run this
 ```
