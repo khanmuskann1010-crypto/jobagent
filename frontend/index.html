@@ -1893,7 +1893,11 @@ function renderTrendChart(trend) {
   `;
 
   // Draw each line in from left to right via the classic stroke-dashoffset trick.
+  // Skipped when the Insights tab isn't the active one - getTotalLength()
+  // throws on an element that isn't actually rendered, and the chart looks
+  // fine without the draw-in animation on the (rare) first render after a tab switch.
   el.querySelectorAll("polyline").forEach((poly) => {
+    if (!poly.getClientRects().length) return;
     const length = poly.getTotalLength();
     poly.style.strokeDasharray = String(length);
     poly.style.strokeDashoffset = String(length);
@@ -2083,13 +2087,16 @@ async function sendChat(text, { fromVoice = false } = {}) {
     chatHistory.push({ role: "user", content: text });
     chatHistory.push({ role: "assistant", content: res.reply });
     if (chatHistory.length > 24) chatHistory = chatHistory.slice(-24);
-
-    await refreshAll();
   } catch (e) {
     thinking.innerHTML = "";
     thinking.textContent = `Something went wrong: ${e.message}`;
     setOrbState("idle");
+    return;
   }
+  // Runs after the reply is safely shown - a background refresh failing for
+  // any reason (a rendering bug, a flaky panel) should never overwrite a
+  // chat reply that already succeeded.
+  refreshAll().catch((e) => console.error("Background refresh after chat failed:", e));
 }
 
 function askAboutJob(n) {
