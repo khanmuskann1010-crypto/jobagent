@@ -150,7 +150,10 @@ tabbed Insights/LinkedIn/Inbox panel, built around three columns:
   below; it also reacts visually while thinking/listening/speaking) over
   the job queue (search/filter box on top, matches title, company,
   location, and salary; ranked by fit). Clicking a listing both asks
-  Dextor about it and opens the real posting in a new tab.
+  Dextor about it and opens the real posting in a new tab. The server
+  automatically runs a fetch the first time it starts each day (a pulsing
+  "fetching today's listings…" pill appears next to the job count while it
+  runs) — no need to manually run `python main.py` every morning.
 - **Right** — an interview **Calendar** (compact month view + your next
   few interviews - set a date by asking Dextor, or with the 📅 button on
   an applied row) → Dextor's chat panel. A genuine conversational agent
@@ -260,6 +263,7 @@ identify a listing (e.g. `indeed`/`JOBSEARCH_145`).
 | GET | `/api/best-match` | Highest-scoring job still at status `new` |
 | GET | `/api/progress` | `{total_scored, by_status: {...}}` counts for the funnel |
 | GET | `/api/groq-usage` | `{date, used, limit, remaining, pct}` - today's Groq token usage, tracked by this app (see below) |
+| GET | `/api/fetch-status` | `{status, new, error}` - state of the once-a-day automatic startup fetch (`idle`/`running`/`done`/`error`) |
 | POST | `/api/jobs/{source}/{external_id}/tailor-cv` | Runs `cv_tailor.py` against this listing, returns the suggestions |
 | POST | `/api/jobs/{source}/{external_id}/cover-letter` | Runs `cover_letter.py` against this listing, returns the letter |
 | POST | `/api/jobs/{source}/{external_id}/apply-kit` | Tailored CV + cover letter together, returns `{downloads: [{label, url}, ...]}` |
