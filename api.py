@@ -12,15 +12,18 @@ Run:
 Then open http://localhost:8000
 """
 
+import base64
 import csv
 import io
+import os
+import secrets
 import threading
 from datetime import date
 from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import RedirectResponse, StreamingResponse
+from fastapi.responses import RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -73,6 +76,28 @@ except ImportError as e:
     GMAIL_IMPORT_ERROR = str(e)  # Gmail is optional - don't crash the whole server over it
 
 app = FastAPI(title="Job Search Agent API")
+
+# Optional gate for a public deployment (e.g. the demo branch on Render,
+# whose free tier has no built-in access control): set both env vars and
+# every request needs an HTTP Basic Auth login. Unset (the normal local/
+# Codespaces case) means no auth at all, same as before.
+_BASIC_AUTH_USER = os.environ.get("DEMO_BASIC_AUTH_USER")
+_BASIC_AUTH_PASS = os.environ.get("DEMO_BASIC_AUTH_PASS")
+
+if _BASIC_AUTH_USER and _BASIC_AUTH_PASS:
+    @app.middleware("http")
+    async def _require_basic_auth(request: Request, call_next):
+        auth = request.headers.get("authorization", "")
+        valid = False
+        if auth.startswith("Basic "):
+            try:
+                user, _, pw = base64.b64decode(auth[6:]).decode().partition(":")
+                valid = secrets.compare_digest(user, _BASIC_AUTH_USER) and secrets.compare_digest(pw, _BASIC_AUTH_PASS)
+            except Exception:
+                valid = False
+        if not valid:
+            return Response(status_code=401, headers={"WWW-Authenticate": 'Basic realm="Dextor"'})
+        return await call_next(request)
 
 
 @app.on_event("startup")
