@@ -22,3 +22,11 @@ services:
         sync: false
       - key: FRANCE_TRAVAIL_CLIENT_SECRET
         sync: false
+      # Set both to gate the whole site behind an HTTP Basic Auth login -
+      # Render's free tier has no built-in access control, so this is how
+      # you keep the demo restricted to people you actually hand the
+      # username/password to. Leave both unset for no login at all.
+      - key: DEMO_BASIC_AUTH_USER
+        sync: false
+      - key: DEMO_BASIC_AUTH_PASS
+        sync: false
