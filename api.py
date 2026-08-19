@@ -26,6 +26,7 @@ from pydantic import BaseModel
 
 import chat_agent
 import db
+import dedupe
 import groq_usage
 import interview_agent
 import link_checker
@@ -104,9 +105,11 @@ def _groq_client() -> Groq | None:
 
 
 def _sorted_jobs() -> list[dict]:
-    """Canonical ordering: highest score first. The frontend's job list and
-    chat's "job N" numbering both derive from this, so numbers line up."""
-    return db.get_all_jobs()
+    """Canonical ordering: highest score first, with same-posting duplicates
+    across sources merged into one card (dedupe.py). The frontend's job
+    list and chat's "job N" numbering both derive from this, so numbers
+    line up everywhere - and both see the same merged view."""
+    return dedupe.group_duplicates(db.get_all_jobs())
 
 
 @app.get("/api/jobs")

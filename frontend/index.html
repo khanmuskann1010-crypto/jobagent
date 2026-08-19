@@ -309,6 +309,7 @@
   .job-card h3 { margin: 0 0 0.2rem; font-size: 0.88rem; line-height: 1.3; font-weight: 600; font-family: 'Inter', sans-serif; }
   .job-card .meta { margin: 0; font-size: 0.76rem; color: var(--muted); }
   .job-card .meta.salary { margin-top: 0.15rem; color: var(--emerald-dark); }
+  .meta.also-seen { margin-top: 0.1rem; font-size: 0.68rem; font-style: italic; }
   .status-badge {
     font-size: 0.63rem;
     font-weight: 700;
@@ -1289,6 +1290,8 @@ function renderJobList() {
     const deadBadge = j.link_status === "dead"
       ? `<span class="link-dead-badge" title="This listing's link returned a not-found response">⚠ may be removed</span>` : "";
     const salaryLine = j.salary ? `<p class="meta salary">💶 ${escapeHtml(j.salary)}</p>` : "";
+    const alsoSeenLine = (j.also_seen_on && j.also_seen_on.length)
+      ? `<p class="meta also-seen">Also on ${j.also_seen_on.map(o => escapeHtml(o.source.replace("_", " "))).join(", ")}</p>` : "";
     const kit = applyKits[jobKey(j)];
     const kitLinks = kit
       ? `<div class="kit-links">${kit.map(d => `<a href="${d.url}" download class="download-link">⬇ ${d.label}</a>`).join("")}</div>` : "";
@@ -1301,6 +1304,7 @@ function renderJobList() {
       <h3>${escapeHtml(j.title)}${statusBadge}${deadBadge}</h3>
       <p class="meta">${escapeHtml(j.company)} — ${escapeHtml(j.location)}</p>
       ${salaryLine}
+      ${alsoSeenLine}
       <div class="job-card-actions">
         <button class="pill-btn primary mini" data-action="apply">🚀 Apply</button>
         ${showMarkApplied ? `<button class="pill-btn mini" data-action="mark-applied">✓ Applied</button>` : ""}
@@ -1359,6 +1363,8 @@ function renderBestMatch(job) {
     return;
   }
   const salaryLine = job.salary ? `<p class="meta salary">💶 ${escapeHtml(job.salary)}</p>` : "";
+  const alsoSeenLine = (job.also_seen_on && job.also_seen_on.length)
+    ? `<p class="meta also-seen">Also on ${job.also_seen_on.map(o => escapeHtml(o.source.replace("_", " "))).join(", ")}</p>` : "";
   slot.innerHTML = `
     <div class="best-match-card">
       <span class="eyebrow">Top pick</span>
@@ -1366,6 +1372,7 @@ function renderBestMatch(job) {
       <h3>${escapeHtml(job.title)}</h3>
       <p class="meta">${escapeHtml(job.company)} — ${escapeHtml(job.location)}</p>
       ${salaryLine}
+      ${alsoSeenLine}
       <p class="reason">${escapeHtml(job.reason)}</p>
       <div class="best-match-actions">
         <button class="pill-btn primary" data-action="applied">Mark applied</button>

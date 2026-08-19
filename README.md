@@ -161,7 +161,11 @@ tabbed Insights/LinkedIn/Inbox panel, built around three columns:
   auto-fetch also quietly rechecks a batch of already-seen listings' links
   and flags any that 404 with a "⚠ may be removed" badge (conservatively -
   a blocked/rate-limited check counts as unknown, not dead, so you won't
-  see false alarms from sites that reject bot-like requests).
+  see false alarms from sites that reject bot-like requests). The same
+  posting showing up from multiple sources (Indeed, Adzuna, France
+  Travail, ...) is merged into one card (`dedupe.py`, matched on company +
+  similar title) with a small "Also on ..." note, rather than cluttering
+  the queue with near-identical listings.
 - **Right** — an interview **Calendar** (compact month view + your next
   few interviews - set a date by asking Dextor, or with the 📅 button on
   an applied row) → Dextor's chat panel. A genuine conversational agent
@@ -346,6 +350,7 @@ job-search-agent/
 ├── wttj.py               # Welcome to the Jungle client (WIP, see below)
 ├── indeed_source.py      # parses Claude's Indeed connector output into the common listing schema
 ├── link_checker.py       # flags listings whose link has gone dead (404/410)
+├── dedupe.py              # merges the same posting seen from multiple sources
 ├── db.py                # SQLite store: dedup history + application status (jobs.db, tracked in git)
 ├── digest.py            # styled HTML digest generator
 ├── score_jobs.py        # LLM scoring logic (Groq by default)
