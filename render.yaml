@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: dextor-demo
+    runtime: python
+    branch: demo
+    plan: free
+    buildCommand: pip install -r requirements.txt -r requirements-api.txt
+    startCommand: uvicorn api:app --host 0.0.0.0 --port $PORT
+    envVars:
+      # Set in the Render dashboard, not here - use a dedicated demo key
+      # (Groq lets you create more than one), never your personal one, so
+      # public demo traffic can never eat into your real daily quota.
+      - key: GROQ_API_KEY
+        sync: false
+      # Optional - only needed if you also want the demo to auto-fetch real
+      # current listings alongside the seeded sample data. Safe to leave unset.
+      - key: ADZUNA_APP_ID
+        sync: false
+      - key: ADZUNA_APP_KEY
+        sync: false
+      - key: FRANCE_TRAVAIL_CLIENT_ID
+        sync: false
+      - key: FRANCE_TRAVAIL_CLIENT_SECRET
+        sync: false

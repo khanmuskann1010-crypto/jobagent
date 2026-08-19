@@ -1,3 +1,8 @@
+> **This is the `demo` branch.** `cv.md`, `profile.md`, and `jobs.db` here are
+> all fictional sample data (see `seed_demo_data.py`) for a public, live demo
+> of the dashboard - not anyone's real job search. The real working version
+> lives on the project's main development branch.
+
 # Job Search Agent — Phase 2 + CV tailoring + voice + dashboard
 
 Fetches marketing/growth job listings from France Travail, Adzuna, and
