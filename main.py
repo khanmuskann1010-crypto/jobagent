@@ -32,6 +32,82 @@ from score_jobs import score_all
 DEFAULT_DIGEST_PATH = Path(__file__).parent / "jobs_digest.html"
 
 
+def run_fetch(
+    keywords: str = "marketing communication",
+    max_results: int = 25,
+    min_score: int = 0,
+    digest_path: Path | str = DEFAULT_DIGEST_PATH,
+    extra_listings: str | None = None,
+) -> dict:
+    """One fetch -> dedupe -> score -> digest pass. Used by both the `python
+    main.py` CLI and api.py's on-startup auto-fetch. Returns a summary dict
+    so a caller can report what happened without scraping stdout."""
+    digest_path = Path(digest_path)
+
+    archived = auto_archive_stale_jobs()
+    if archived:
+        print(f"Archived {archived} low-score listing(s) untouched for 30+ days.")
+
+    print(f"Searching France Travail + Adzuna for '{keywords}'...")
+
+    listings = []
+
+    try:
+        ft_raw = fetch_jobs.search_jobs(keywords, max_results=max_results)
+        listings += [fetch_jobs.normalize_listing(r) for r in ft_raw]
+    except Exception as e:
+        print(f"  France Travail fetch failed, skipping this source: {e}")
+
+    try:
+        adzuna_raw = adzuna.search_jobs(keywords, max_results=max_results)
+        listings += [adzuna.normalize_listing(r) for r in adzuna_raw]
+    except Exception as e:
+        print(f"  Adzuna fetch failed, skipping this source: {e}")
+
+    if extra_listings:
+        extra_path = Path(extra_listings)
+        if extra_path.exists():
+            extra = json.loads(extra_path.read_text())
+            listings += extra
+            print(f"  Merged {len(extra)} pre-fetched listings from {extra_listings}")
+        else:
+            print(f"  --extra-listings path {extra_listings} doesn't exist, skipping it")
+
+    print(f"Fetched {len(listings)} listings across all sources.")
+
+    new_listings = filter_unseen(listings)
+    print(f"{len(new_listings)} are new (not seen in a previous run).\n")
+
+    if not new_listings:
+        print("Nothing new today.")
+        generate_html([], digest_path)
+        print(f"Digest written to {digest_path}")
+        return {"fetched": len(listings), "new": 0, "archived": archived}
+
+    print("Scoring against your profile...\n")
+    scored = score_all(new_listings)
+    save_scored(scored)
+
+    shown = [s for s in scored if s["score"] >= min_score]
+
+    print(f"{'='*70}")
+    print(f"RESULTS ({len(shown)} of {len(scored)} shown, ranked by fit)")
+    print(f"{'='*70}\n")
+
+    for i, job in enumerate(shown, start=1):
+        print(f"[{i}] {job['score']}/10 — {job['title']} @ {job['company']} ({job['source']})")
+        print(f"         {job['location']} | {job['contract_type']}")
+        print(f"         {job['reason']}")
+        if job["url"]:
+            print(f"         {job['url']}")
+        print()
+
+    generate_html(shown, digest_path)
+    print(f"Digest written to {digest_path}")
+    print("Saved to jobs.db — use voice_agent.py or the dashboard to talk about these listings and tailor your CV.")
+    return {"fetched": len(listings), "new": len(new_listings), "archived": archived}
+
+
 def main():
     load_dotenv()
 
@@ -64,70 +140,7 @@ def main():
         help="Path to a JSON file of pre-fetched listings (e.g. Indeed) to merge in",
     )
     args = parser.parse_args()
-
-    archived = auto_archive_stale_jobs()
-    if archived:
-        print(f"Archived {archived} low-score listing(s) untouched for 30+ days.")
-
-    print(f"Searching France Travail + Adzuna for '{args.keywords}'...")
-
-    listings = []
-
-    try:
-        ft_raw = fetch_jobs.search_jobs(args.keywords, max_results=args.max_results)
-        listings += [fetch_jobs.normalize_listing(r) for r in ft_raw]
-    except Exception as e:
-        print(f"  France Travail fetch failed, skipping this source: {e}")
-
-    try:
-        adzuna_raw = adzuna.search_jobs(args.keywords, max_results=args.max_results)
-        listings += [adzuna.normalize_listing(r) for r in adzuna_raw]
-    except Exception as e:
-        print(f"  Adzuna fetch failed, skipping this source: {e}")
-
-    if args.extra_listings:
-        extra_path = Path(args.extra_listings)
-        if extra_path.exists():
-            extra = json.loads(extra_path.read_text())
-            listings += extra
-            print(f"  Merged {len(extra)} pre-fetched listings from {args.extra_listings}")
-        else:
-            print(f"  --extra-listings path {args.extra_listings} doesn't exist, skipping it")
-
-    print(f"Fetched {len(listings)} listings across all sources.")
-
-    new_listings = filter_unseen(listings)
-    print(f"{len(new_listings)} are new (not seen in a previous run).\n")
-
-    digest_path = Path(args.digest_path)
-
-    if not new_listings:
-        print("Nothing new today.")
-        generate_html([], digest_path)
-        print(f"Digest written to {digest_path}")
-        return
-
-    print("Scoring against your profile...\n")
-    scored = score_all(new_listings)
-    save_scored(scored)
-
-    shown = [s for s in scored if s["score"] >= args.min_score]
-
-    print(f"{'='*70}")
-    print(f"RESULTS ({len(shown)} of {len(scored)} shown, ranked by fit)")
-    print(f"{'='*70}\n")
-
-    for i, job in enumerate(shown, start=1):
-        print(f"[{i}] {job['score']}/10 — {job['title']} @ {job['company']} ({job['source']})")
-        print(f"         {job['location']} | {job['contract_type']}")
-        print(f"         {job['reason']}")
-        if job["url"]:
-            print(f"         {job['url']}")
-        print()
-
-    generate_html(shown, digest_path)
-    print(f"Digest written to {digest_path}")
-    print("Saved to jobs.db — use voice_agent.py or the dashboard to talk about these listings and tailor your CV.")
+    run_fetch(args.keywords, args.max_results, args.min_score, args.digest_path, args.extra_listings)
 
 
 if __name__ == "__main__":

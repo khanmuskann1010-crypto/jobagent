@@ -43,6 +43,10 @@ CREATE TABLE IF NOT EXISTS status_history (
     status TEXT NOT NULL,
     changed_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS meta (
+    key TEXT PRIMARY KEY,
+    value TEXT
+);
 """
 
 _COLUMNS = (
@@ -215,6 +219,21 @@ def get_upcoming_interviews(db_path: Path = DB_PATH) -> list[dict]:
                 ORDER BY interview_at ASC"""
         ).fetchall()
     return [_row_to_dict(r) for r in rows]
+
+
+def get_meta(key: str, db_path: Path = DB_PATH) -> str | None:
+    with connect(db_path) as conn:
+        row = conn.execute("SELECT value FROM meta WHERE key = ?", (key,)).fetchone()
+    return row[0] if row else None
+
+
+def set_meta(key: str, value: str, db_path: Path = DB_PATH) -> None:
+    with connect(db_path) as conn:
+        conn.execute(
+            "INSERT INTO meta (key, value) VALUES (?, ?) "
+            "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            (key, value),
+        )
 
 
 def get_status_trend(days: int = 30, db_path: Path = DB_PATH) -> dict:

@@ -249,6 +249,8 @@
     flex: 0 0 auto;
   }
   .panel-head .count { font-size: 0.75rem; color: var(--muted); }
+  .fetch-pill { animation: fetch-pulse 1.6s ease-in-out infinite; }
+  @keyframes fetch-pulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
   .panel-body { overflow-y: auto; min-height: 0; flex: 1 1 auto; }
   .job-search {
     width: 100%;
@@ -1024,6 +1026,7 @@
     <div class="panel glass center-queue-panel">
       <div class="panel-head">
         <span class="eyebrow">Application Queue</span>
+        <span class="count mono fetch-pill hidden" id="fetch-pill">🔄 fetching today's listings…</span>
         <span class="count mono" id="queue-count">— jobs</span>
       </div>
       <input type="search" class="job-search" id="job-search" placeholder="Filter by title, company, location, salary…">
@@ -2131,15 +2134,45 @@ function speak(text) {
   window.speechSynthesis.speak(utter);
 }
 
+/* Auto-fetch indicator: the server kicks off a background fetch of today's
+   listings on startup (once per day - see api.py's _run_auto_fetch), so
+   poll for it finishing and refresh the queue when it does. */
+let autoFetchSeenRunning = false;
+async function pollFetchStatus() {
+  let status;
+  try {
+    status = await api("/api/fetch-status");
+  } catch {
+    return;
+  }
+  const pill = document.getElementById("fetch-pill");
+  if (status.status === "running") {
+    autoFetchSeenRunning = true;
+    pill.classList.remove("hidden");
+    return;
+  }
+  pill.classList.add("hidden");
+  if (status.status === "done" && autoFetchSeenRunning) {
+    autoFetchSeenRunning = false;
+    await refreshAll();
+    showToast(status.new > 0 ? `Pulled ${status.new} new listing(s) for today.` : "Checked for new listings — nothing new today.");
+  } else if (status.status === "error" && autoFetchSeenRunning) {
+    autoFetchSeenRunning = false;
+    showToast(`Auto-fetch failed: ${status.error}`, "error");
+  }
+}
+
 /* Boot */
 appendMessage("agent", "Hey, I'm Dextor — ask me anything: what's new, how a specific listing looks, whether you should apply, or just talk through your search with me. Click the mic if you'd rather talk.");
 refreshAll().catch((e) => appendMessage("agent", `Couldn't load your data: ${e.message}`));
 loadInbox();
+pollFetchStatus();
 
 // Keep the queue/insights/calendar/applied panels fresh automatically. Gmail
 // is excluded - it costs a Groq call per load, so it only refreshes on its
 // own explicit refresh button.
 setInterval(refreshAll, 60000);
+setInterval(pollFetchStatus, 5000);
 </script>
 </body>
 </html>
