@@ -47,6 +47,33 @@ python -m src.main --keywords "growth marketing" --max-results 30 --min-score 6
 - `--max-results` — how many listings to fetch and score (default: 25)
 - `--min-score` — only print listings scoring at or above this (default: 0, shows everything)
 
+## Configuration
+
+All optional, set in `.env`:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `JOB_AGENT_MODEL` | `claude-sonnet-5` | Model used to score listings |
+| `JOB_AGENT_TIMEOUT` | `15` | Per-request timeout (seconds) for both France Travail and Anthropic calls |
+| `JOB_AGENT_MAX_RETRIES` | `3` | Retries on transient errors (connection issues, rate limits, 5xx), with exponential backoff |
+
+## Error handling
+
+- Missing `ANTHROPIC_API_KEY` / `FRANCE_TRAVAIL_CLIENT_ID` / `FRANCE_TRAVAIL_CLIENT_SECRET` fails fast, listing every missing variable, before any network call.
+- France Travail OAuth token is cached in memory (with a 30s early-refresh buffer) so a run doesn't re-authenticate on every request.
+- Transient network errors (timeouts, connection errors, 5xx) on both APIs are retried automatically with backoff; a bad Anthropic API key stops the run immediately rather than silently scoring every listing 0.
+- A single listing that fails to score (malformed model output, exhausted retries) is scored `0` with the reason recorded, so it doesn't crash the rest of the batch.
+- Invalid `--keywords` / `--max-results` / `--min-score` are rejected with a clear message before any API calls are made.
+
+## Tests
+
+```bash
+pip install pytest
+python -m pytest tests -v
+```
+
+Tests mock all network/API calls — no credentials or internet access needed.
+
 ## What's next (Phase 2)
 
 - Add a second source (Adzuna)

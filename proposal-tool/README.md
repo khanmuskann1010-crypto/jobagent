@@ -37,16 +37,28 @@ https://console.anthropic.com/settings/keys).
 
 ## Before your first real run
 
-**`service_catalog.json` ships with example data** — six services typical
-of a B2B recruitment/staffing + back-office consultancy (retained search,
-contingency recruitment, RPO, back-office-as-a-service, employer branding,
-fractional TA consulting), with realistic pricing structures, so the tool
-runs end to end out of the box. **Replace it with your actual services,
-prices, and pricing rules before sending anything to a real prospect** —
-this file is the whole ballgame, the tool is only as good as what's in
-here. Keep the same shape (`service_id`, `service_name`,
-`base_price_eur`, `pricing_rules`, `good_fit_for`, `description`) since
-the prompt and validation in `generate_proposal.py` depend on it.
+**`service_catalog.json` ships with pricing grounded in cited market
+research**, not invented numbers — six services typical of a B2B
+recruitment/staffing + back-office consultancy (retained search,
+contingency recruitment, RPO, back-office-as-a-service, employer
+branding, fractional TA consulting). Each service carries a
+`market_benchmark` note and the catalog's `pricing_research` block lists
+the 8 sources used (France-specific data where available, since this is
+scoped for a Paris-based consultancy) — see that block for the full
+citation list and methodology, retrieved 2026-08-28. One figure
+(the employer branding sprint) is flagged as a triangulated estimate
+rather than a directly-sourced number, since no source quotes pricing for
+that narrow a scope.
+
+**This is still benchmark data, not your firm's real rate card — replace
+it with your actual services, prices, and pricing rules before sending
+anything to a real prospect.** This file is the whole ballgame, the tool
+is only as good as what's in here. Keep the same shape (`service_id`,
+`service_name`, `base_price_eur`, `pricing_rules`, `good_fit_for`,
+`description`) since the prompt and validation in `generate_proposal.py`
+depend on it — `market_benchmark` and `pricing_research` are extra
+context for whoever's reviewing drafts and aren't read by the model
+prompt, so you're free to drop them once you swap in real pricing.
 
 ## Run it
 

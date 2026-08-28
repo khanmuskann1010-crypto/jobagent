@@ -1,13 +1,29 @@
 {
-  "_readme": "EXAMPLE DATA — replace with your company's real services, prices, and pricing rules before sending anything to a real prospect. Structure (service_id, service_name, base_price_eur, pricing_rules, good_fit_for, description) must stay the same shape since generate_proposal.py and the system prompt rely on it.",
+  "_readme": "Pricing below is grounded in the market benchmarks cited in pricing_research (retrieved 2026-08-28) — replace with your company's real, negotiated pricing before sending anything to a real prospect. This is still reference/benchmark data, not your firm's actual rate card. Structure (service_id, service_name, base_price_eur, pricing_rules, good_fit_for, description) must stay the same shape since generate_proposal.py and the system prompt rely on it; market_benchmark/sources are extra context for the human reviewing drafts and are not read by the model prompt.",
   "currency": "EUR",
+  "pricing_research": {
+    "retrieved": "2026-08-28",
+    "fx_rate_used": "1 USD = 0.858 EUR (Federal Reserve H.10, 2026-08-27) — applied only to the two USD-sourced benchmarks (RPO, employer branding)",
+    "method": "Each service's base_price_eur and pricing_rules are set from the cited industry benchmark ranges below, positioned within the sourced range for a boutique/independent consultancy (not a large global firm) serving Paris-based clients. The employer branding sprint figure is the one triangulated estimate rather than a directly-sourced 'sprint' benchmark — see its market_benchmark note.",
+    "sources": [
+      {"topic": "Contingency recruitment fees (global)", "finding": "15-30% of first-year salary; 20% commonly cited as benchmark; entry-level 10-15%, mid/senior 20-25%, executive 25-30%", "url": "https://www.pin.com/blog/recruitment-agency-commission-structures/"},
+      {"topic": "Contingency/cabinet de recrutement fees (France)", "finding": "16-22% of gross annual salary per Adeis RH 2025 survey; market range 12-30%; flat fees EUR 10,000-30,000 for standard/rare profiles", "url": "https://www.talentprogram.fr/vrai-tarif-cabinet-recrutement/"},
+      {"topic": "Retained executive search fees", "finding": "25-35% of first-year total comp; one-third (33.3%) standard reference for C-level/CFO searches; paid in three installments (engagement / 60 days / placement)", "url": "https://floodgatemedical.com/feeds/blog/executive-search-firm-fees"},
+      {"topic": "RPO pricing models", "finding": "Monthly retainer for capacity-heavy deals: USD 8,000-15,000/month per embedded recruiter; per-hire model USD 1,500-10,000/hire; SHRM average cost-per-hire USD 5,475 (2025)", "url": "https://eorhq.com/guides/rpo-cost-guide/"},
+      {"topic": "PEO / HR outsourcing cost per employee", "finding": "USD 40-160 per employee per month, or 2-6% of payroll, depending on service level", "url": "https://www.rippling.com/blog/peo-cost"},
+      {"topic": "Payroll outsourcing cost (France)", "finding": "EUR 15-40 per payslip/month for full-service payroll (EUR 30-40 for <10 employees, EUR 15-20 for ~50 employees); setup fee EUR 50-450; software subscription EUR 30-120/month", "url": "https://www.apogea.fr/prix-bulletin-paie-externalise/"},
+      {"topic": "Employer branding / branding agency project cost", "finding": "Small business branding projects run USD 5,000-30,000; most reviewed projects USD 10,000-49,999; comprehensive EVP overhauls USD 40,000-150,000+; agency hourly rates USD 100-149/hr; accelerated/sprint timelines run 10-50% above standard pricing", "url": "https://clutch.co/agencies/branding/pricing"},
+      {"topic": "Freelance HR consultant day rate (France)", "finding": "TJM EUR 300-400 (junior) up to EUR 800+ (senior/expert); Paris/Ile-de-France rates run 20-30% above the rest of France", "url": "https://www.regie-portage.fr/freelance/freelance-grille-tjm/"}
+    ]
+  },
   "services": [
     {
       "service_id": "retained-exec-search",
       "service_name": "Retained Executive Search",
       "description": "Dedicated search for a single senior/leadership hire (director level and above), with a named lead recruiter and a structured shortlist process.",
       "base_price_eur": 18000,
-      "pricing_rules": "Fee is 30% of the role's estimated first-year total compensation, with base_price_eur as the minimum fee regardless of salary. Billed in three installments: 1/3 on engagement, 1/3 on shortlist delivery, 1/3 on placement. Use this tier only for single named leadership/director+ hires, not volume hiring.",
+      "pricing_rules": "Fee is 30% of the role's estimated first-year total compensation (within the sourced 25-35% industry range; 33.3% is standard for C-level/CFO searches specifically), with base_price_eur as the minimum fee regardless of salary — set at the upper end of the EUR 10,000-30,000 French flat-fee range for rare/senior profiles. Billed in three installments: 1/3 on engagement, 1/3 at 60 days into the search, 1/3 on placement. Use this tier only for single named leadership/director+ hires, not volume hiring.",
+      "market_benchmark": "25-35% of first-year total comp globally, 33.3% standard for CEO/CFO searches (floodgatemedical.com, cowenpartners.com); France flat-fee equivalents run EUR 10,000-30,000 for standard/rare profiles (talentprogram.fr, Adeis RH 2025).",
       "good_fit_for": [
         "single senior or leadership hire (director, VP, C-level)",
         "hard-to-fill or confidential role",
@@ -19,7 +35,8 @@
       "service_name": "Contingency Recruitment",
       "description": "Per-placement recruitment for individual contributor and manager-level roles, no upfront retainer — fee due only on a successful hire.",
       "base_price_eur": 0,
-      "pricing_rules": "Fee is 18% of the placed candidate's first-year base salary, invoiced on the candidate's start date. No base_price_eur retainer for this service — use this tier for standard IC/manager roles rather than director+ or volume hiring, where the retained or RPO tiers apply instead.",
+      "pricing_rules": "Fee is 18% of the placed candidate's first-year gross base salary, invoiced on the candidate's start date — set at the midpoint of the Adeis RH 2025 France benchmark (16-22%), which sits inside the broader global 15-30% range for mid/senior roles. No base_price_eur retainer for this service — use this tier for standard IC/manager roles rather than director+ or volume hiring, where the retained or RPO tiers apply instead.",
+      "market_benchmark": "France: 16-22% of gross annual salary (Adeis RH 2025 survey, via talentprogram.fr). Global: 15-30%, with 20% the most commonly cited benchmark for mid/senior roles (pin.com, pg-rec.com).",
       "good_fit_for": [
         "individual contributor or manager-level roles",
         "prospect wants to pay only on results, not a retainer",
@@ -30,8 +47,9 @@
       "service_id": "rpo-hiring-program",
       "service_name": "Recruitment-as-a-Service (RPO)",
       "description": "An embedded recruiter working a defined set of open roles for the prospect over a rolling monthly engagement — for companies hiring continuously rather than for one-off roles.",
-      "base_price_eur": 4500,
-      "pricing_rules": "Monthly fee of base_price_eur per active requisition slot (i.e., 2 concurrent roles = 2x base_price_eur/month), minimum 3-month engagement. Scale the number of slots to the prospect's stated hiring volume/timeline — do not quote this tier for a single one-off hire.",
+      "base_price_eur": 3500,
+      "pricing_rules": "Monthly fee of base_price_eur per active requisition slot (i.e., 2 concurrent roles = 2x base_price_eur/month), minimum 3-month engagement. Derived from the sourced USD 8,000-15,000/month per embedded recruiter benchmark divided across a realistic 3-4 concurrent requisitions per recruiter, then converted at 1 USD = 0.858 EUR. Scale the number of slots to the prospect's stated hiring volume/timeline — do not quote this tier for a single one-off hire (use contingency or retained search instead).",
+      "market_benchmark": "USD 8,000-15,000/month per embedded recruiter on capacity-heavy RPO deals; USD 1,500-10,000 per hire on outcome-based deals; SHRM's 2025 average cost-per-hire is USD 5,475 (eorhq.com/guides/rpo-cost-guide).",
       "good_fit_for": [
         "hiring 5+ people over a quarter or opening a new office/team",
         "recurring or seasonal hiring volume, not a single role",
@@ -42,8 +60,9 @@
       "service_id": "back-office-as-a-service",
       "service_name": "Back Office as a Service (Payroll & HR Admin)",
       "description": "Ongoing payroll processing, contract administration, and HR compliance support for a prospect's existing team, so they don't need to build an internal back-office function.",
-      "base_price_eur": 600,
-      "pricing_rules": "Monthly fee is base_price_eur minimum, or EUR 55 per managed employee per month, whichever is higher. Quote this alongside a hiring-focused service only when the prospect is also growing a local team and will need ongoing admin support for the people being hired, not as a standalone recommendation for a pure hiring need.",
+      "base_price_eur": 500,
+      "pricing_rules": "Monthly fee is base_price_eur minimum, or EUR 30 per managed employee per month, whichever is higher — the per-employee rate sits at the midpoint of the sourced EUR 15-40/payslip full-service range, and the minimum covers a small handful of employees at the small-team end of that range plus a typical setup/software cost. Quote this alongside a hiring-focused service only when the prospect is also growing a local team and will need ongoing admin support for the people being hired, not as a standalone recommendation for a pure hiring need.",
+      "market_benchmark": "France: EUR 15-40 per payslip/month for full-service payroll (higher for teams under 10 people, lower at ~50 people), plus EUR 50-450 setup and EUR 30-120/month software subscription (apogea.fr, aepgestion.fr, mhpaie.fr — 2026 pricing roundups). Comparable US PEO benchmark: USD 40-160/employee/month.",
       "good_fit_for": [
         "opening a local entity/office and needs payroll & compliance support",
         "growing team without an internal HR/admin function yet",
@@ -53,9 +72,10 @@
     {
       "service_id": "employer-branding-sprint",
       "service_name": "Employer Branding & Talent Marketing Sprint",
-      "description": "A fixed 6-8 week engagement to audit and refresh the prospect's careers page, employee value proposition, and job post content, to improve candidate response rates.",
-      "base_price_eur": 9500,
-      "pricing_rules": "Flat project fee of base_price_eur, billed 50% on engagement / 50% on delivery. Recommend this only when research or notes indicate the prospect already has a hiring process but is struggling with candidate volume/quality/employer perception — not as a first recommendation for a prospect with no stated hiring activity.",
+      "description": "A fixed 6-8 week engagement to audit and refresh the prospect's careers page, employee value proposition messaging, and job post content, to improve candidate response rates.",
+      "base_price_eur": 8500,
+      "pricing_rules": "Flat project fee of base_price_eur, billed 50% on engagement / 50% on delivery. Recommend this only when research or notes indicate the prospect already has a hiring process but is struggling with candidate volume/quality/employer perception — not as a first recommendation for a prospect with no stated hiring activity. Do not combine with a full employer-branding overhaul — this sprint is a narrower, faster scope than a comprehensive EVP/rebrand engagement.",
+      "market_benchmark": "This is a triangulated estimate, not a directly-sourced 'sprint' benchmark: no source quoted pricing for a narrow careers-page-only engagement specifically. It's positioned at the low end of the sourced USD 5,000-30,000 small-business branding project range (clutch.co), consistent with USD 100-149/hr agency rates applied to an estimated 60-100 hours of scoped work, converted at 1 USD = 0.858 EUR. Full comprehensive employer-branding/EVP overhauls run USD 40,000-150,000+ — this tier is deliberately much narrower in scope than that.",
       "good_fit_for": [
         "prospect mentions weak candidate response, low applicant quality, or employer brand/perception issues",
         "prospect has an existing careers page or job posts that read as generic or outdated",
@@ -66,8 +86,9 @@
       "service_id": "fractional-ta-consulting",
       "service_name": "Fractional Talent Acquisition Consulting",
       "description": "A senior recruiter/TA lead working a fixed number of days per month to build or fix the prospect's internal hiring process, interview structure, and hiring manager enablement.",
-      "base_price_eur": 1100,
-      "pricing_rules": "Day rate is base_price_eur per day, minimum 2 days/month, minimum 3-month engagement. Recommend this when the prospect wants to build internal hiring capability rather than outsource hiring entirely — do not combine with RPO for the same roles, since they solve the same problem two different ways.",
+      "base_price_eur": 650,
+      "pricing_rules": "Day rate is base_price_eur per day, minimum 2 days/month, minimum 3-month engagement. Set at the senior end of the sourced EUR 300-800+ France freelance-HR-consultant day-rate range, reflecting both a senior consultant profile and the Paris/Ile-de-France premium (rates run 20-30% above the rest of France per the same source). Recommend this when the prospect wants to build internal hiring capability rather than outsource hiring entirely — do not combine with RPO for the same roles, since they solve the same problem two different ways.",
+      "market_benchmark": "France freelance HR consultant TJM: EUR 300-400 (junior) up to EUR 800+ (senior/expert); Paris/Ile-de-France runs 20-30% above the rest of France (regie-portage.fr, rh-solutions.com, jobbers.io — 2025/2026 freelance rate studies).",
       "good_fit_for": [
         "prospect wants to build/improve their own internal hiring process, not outsource it",
         "early-stage company hiring its first internal recruiter/HR hire",
