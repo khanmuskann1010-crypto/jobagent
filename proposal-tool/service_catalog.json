@@ -1,0 +1,78 @@
+{
+  "_readme": "EXAMPLE DATA — replace with your company's real services, prices, and pricing rules before sending anything to a real prospect. Structure (service_id, service_name, base_price_eur, pricing_rules, good_fit_for, description) must stay the same shape since generate_proposal.py and the system prompt rely on it.",
+  "currency": "EUR",
+  "services": [
+    {
+      "service_id": "retained-exec-search",
+      "service_name": "Retained Executive Search",
+      "description": "Dedicated search for a single senior/leadership hire (director level and above), with a named lead recruiter and a structured shortlist process.",
+      "base_price_eur": 18000,
+      "pricing_rules": "Fee is 30% of the role's estimated first-year total compensation, with base_price_eur as the minimum fee regardless of salary. Billed in three installments: 1/3 on engagement, 1/3 on shortlist delivery, 1/3 on placement. Use this tier only for single named leadership/director+ hires, not volume hiring.",
+      "good_fit_for": [
+        "single senior or leadership hire (director, VP, C-level)",
+        "hard-to-fill or confidential role",
+        "prospect has struggled to fill the role internally or via a generalist agency"
+      ]
+    },
+    {
+      "service_id": "contingency-recruitment",
+      "service_name": "Contingency Recruitment",
+      "description": "Per-placement recruitment for individual contributor and manager-level roles, no upfront retainer — fee due only on a successful hire.",
+      "base_price_eur": 0,
+      "pricing_rules": "Fee is 18% of the placed candidate's first-year base salary, invoiced on the candidate's start date. No base_price_eur retainer for this service — use this tier for standard IC/manager roles rather than director+ or volume hiring, where the retained or RPO tiers apply instead.",
+      "good_fit_for": [
+        "individual contributor or manager-level roles",
+        "prospect wants to pay only on results, not a retainer",
+        "1-3 open roles, not a sustained hiring program"
+      ]
+    },
+    {
+      "service_id": "rpo-hiring-program",
+      "service_name": "Recruitment-as-a-Service (RPO)",
+      "description": "An embedded recruiter working a defined set of open roles for the prospect over a rolling monthly engagement — for companies hiring continuously rather than for one-off roles.",
+      "base_price_eur": 4500,
+      "pricing_rules": "Monthly fee of base_price_eur per active requisition slot (i.e., 2 concurrent roles = 2x base_price_eur/month), minimum 3-month engagement. Scale the number of slots to the prospect's stated hiring volume/timeline — do not quote this tier for a single one-off hire.",
+      "good_fit_for": [
+        "hiring 5+ people over a quarter or opening a new office/team",
+        "recurring or seasonal hiring volume, not a single role",
+        "prospect explicitly mentions a hiring plan, headcount target, or expansion timeline"
+      ]
+    },
+    {
+      "service_id": "back-office-as-a-service",
+      "service_name": "Back Office as a Service (Payroll & HR Admin)",
+      "description": "Ongoing payroll processing, contract administration, and HR compliance support for a prospect's existing team, so they don't need to build an internal back-office function.",
+      "base_price_eur": 600,
+      "pricing_rules": "Monthly fee is base_price_eur minimum, or EUR 55 per managed employee per month, whichever is higher. Quote this alongside a hiring-focused service only when the prospect is also growing a local team and will need ongoing admin support for the people being hired, not as a standalone recommendation for a pure hiring need.",
+      "good_fit_for": [
+        "opening a local entity/office and needs payroll & compliance support",
+        "growing team without an internal HR/admin function yet",
+        "prospect mentions administrative overhead, compliance, or back-office pain points"
+      ]
+    },
+    {
+      "service_id": "employer-branding-sprint",
+      "service_name": "Employer Branding & Talent Marketing Sprint",
+      "description": "A fixed 6-8 week engagement to audit and refresh the prospect's careers page, employee value proposition, and job post content, to improve candidate response rates.",
+      "base_price_eur": 9500,
+      "pricing_rules": "Flat project fee of base_price_eur, billed 50% on engagement / 50% on delivery. Recommend this only when research or notes indicate the prospect already has a hiring process but is struggling with candidate volume/quality/employer perception — not as a first recommendation for a prospect with no stated hiring activity.",
+      "good_fit_for": [
+        "prospect mentions weak candidate response, low applicant quality, or employer brand/perception issues",
+        "prospect has an existing careers page or job posts that read as generic or outdated",
+        "complements a recruitment or RPO engagement rather than replacing one"
+      ]
+    },
+    {
+      "service_id": "fractional-ta-consulting",
+      "service_name": "Fractional Talent Acquisition Consulting",
+      "description": "A senior recruiter/TA lead working a fixed number of days per month to build or fix the prospect's internal hiring process, interview structure, and hiring manager enablement.",
+      "base_price_eur": 1100,
+      "pricing_rules": "Day rate is base_price_eur per day, minimum 2 days/month, minimum 3-month engagement. Recommend this when the prospect wants to build internal hiring capability rather than outsource hiring entirely — do not combine with RPO for the same roles, since they solve the same problem two different ways.",
+      "good_fit_for": [
+        "prospect wants to build/improve their own internal hiring process, not outsource it",
+        "early-stage company hiring its first internal recruiter/HR hire",
+        "prospect mentions inconsistent interview process or no dedicated hiring owner"
+      ]
+    }
+  ]
+}
